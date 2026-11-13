@@ -1,15 +1,16 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title></title>
+	<title data-i18n=""></title>
+	<script src="i18n.js?v=r5"></script>
 	<script src="common.js?v=f"></script>
 	<link rel="stylesheet" href="style.css?v=f">
 </head>
 <body class="iframe-content">
 	<div class="card">
-		<h2 class="has-tabs"><svg class="icon" viewBox="0 0 24 24"><use id="update-icon" href="icons.svg?v=f#icon-upload"/></svg><span id="update-title">更新固件</span><span class="tab-indicator" id="tab-indicator"></span></h2>
+		<h2 class="has-tabs"><svg class="icon" viewBox="0 0 24 24"><use id="update-icon" href="icons.svg?v=f#icon-upload"/></svg><span id="update-title" data-i18n="更新固件">更新固件</span><span class="tab-indicator" id="tab-indicator"></span></h2>
 
 		<div class="tab-nav">
 			<div class="tab-item active" data-tab="firmware">固件</div>
@@ -28,7 +29,7 @@
 				<label for="update-file" id="update-label"></label>
 				<input type="file" id="update-file" aria-label="选择文件" required>
 			</div>
-			<div class="button-container"><button type="submit" id="update-btn">确认</button></div>
+			<div class="button-container"><button type="submit" id="update-btn" data-i18n="确认">确认</button></div>
 		</form>
 		<div class="tips" id="update-tips">
 			<ul id="update-tips-list"></ul>

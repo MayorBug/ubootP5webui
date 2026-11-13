@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>编程模式</title>
+	<title data-i18n="编程模式">Full flash programming</title>
+	<script src="i18n.js?v=r5"></script>
 	<script src="common.js?v=f"></script>
 	<link rel="stylesheet" href="style.css?v=f">
 </head>
@@ -14,11 +15,11 @@
 		<form enctype="multipart/form-data" name="img" id="img-form">
 			<div class="backup-row">
 				<div class="backup-col">
-					<label for="flash-select">目标闪存</label>
+					<label for="flash-select" data-i18n="目标闪存">目标闪存</label>
 					<select id="flash-select" disabled></select>
 				</div>
 				<div class="backup-col">
-					<span class="label">闪存容量</span>
+					<span class="label" data-i18n="闪存容量">闪存容量</span>
 					<div id="size-display" class="size-display"></div>
 				</div>
 			</div>
@@ -27,7 +28,7 @@
 			<label for="img-file">请选择<b>IMG文件</b></label>
 			<input type="file" name="img" id="img-file" accept=".img,.IMG,.bin,.BIN" required>
 		</div>
-			<div class="button-container"><button type="submit" id="submit-btn" disabled>确认</button></div>
+			<div class="button-container"><button type="submit" id="submit-btn" disabled data-i18n="确认">确认</button></div>
 		</form>
 		<div class="tips tips-danger">
 			<ul>

@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>备份分区</title>
+	<title data-i18n="备份分区">Back up partitions</title>
+	<script src="i18n.js?v=r5"></script>
 	<script src="common.js?v=f"></script>
 	<link rel="stylesheet" href="style.css?v=f">
 </head>
@@ -13,15 +14,15 @@
 		<p>选择要备份的<b>分区名称</b>或<b>nor_full/nand_full</b>，<br>点击<b>确认</b>按钮保存到本地。</p>
 		<div class="backup-row">
 			<div class="backup-col">
-				<label for="part-select">分区名称</label>
+				<label for="part-select" data-i18n="分区名称">分区名称</label>
 				<select id="part-select" ></select>
 			</div>
 			<div class="backup-col">
-				<span class="label">分区信息</span>
+				<span class="label" data-i18n="分区信息">分区信息</span>
 				<div id="size-display" class="size-display"></div>
 			</div>
 		</div>
-		<div class="button-container"><button id="backup-btn" disabled>确认</button></div>
+		<div class="button-container"><button id="backup-btn" disabled data-i18n="确认">确认</button></div>
 		<div class="tips">
 			<ul>
 				<li class="backup-tip">rootfs分区可能读取及下载时间较长；</li>

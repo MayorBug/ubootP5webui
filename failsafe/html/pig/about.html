@@ -1,16 +1,17 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>关于设置</title>
+	<title data-i18n="关于设置">Device settings</title>
+	<script src="i18n.js?v=r5"></script>
 	<script src="common.js?v=f"></script>
 	<link rel="stylesheet" href="style.css?v=f">
 </head>
 <body class="iframe-content">
 	<script>if(window.self!==window.top)document.body.classList.add('in-frame')</script>
 	<div class="card about-card">
-		<h2 class="has-tabs"><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-router"/></svg><span id="about-title">关于设置</span><span class="tab-indicator" id="tab-indicator"></span></h2>
+		<h2 class="has-tabs"><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-router"/></svg><span id="about-title" data-i18n="关于设置">关于设置</span><span class="tab-indicator" id="tab-indicator"></span></h2>
 
 		<!-- 标签页导航 -->
 		<div class="tab-nav">
@@ -35,7 +36,7 @@
 			<div class="tab-content" id="tab-gpio">
 				<div class="about-section">
 					<table class="about-table" id="gpio-table">
-						<thead><tr><th>名称</th><th>映射</th><th>GPIO</th><th>方向</th><th>当前值</th><th>电平</th><th>父系</th><th>来源</th><th>覆盖</th><th><span class="about-gpio-ops">操作 <button class="about-sm-btn" id="gpio-detect-btn">探测按键</button></span></th></tr></thead>
+						<thead><tr><th data-i18n="名称">名称</th><th data-i18n="映射">映射</th><th>GPIO</th><th data-i18n="方向">方向</th><th data-i18n="当前值">当前值</th><th data-i18n="电平">电平</th><th data-i18n="父系">父系</th><th data-i18n="来源">来源</th><th data-i18n="覆盖">覆盖</th><th><span class="about-gpio-ops">操作 <button class="about-sm-btn" id="gpio-detect-btn" data-i18n="探测按键">探测按键</button></span></th></tr></thead>
 						<tbody id="gpio-tbody"></tbody>
 					</table>
 				</div>
@@ -45,7 +46,7 @@
 			<div class="tab-content" id="tab-smem">
 				<div class="about-section">
 					<table class="about-table" id="smem-table">
-						<thead id="smem-thead"><tr><th rowspan="2">名称</th><th colspan="2">起始</th><th colspan="2">结束</th><th colspan="3">大小</th><th rowspan="2">指向</th></tr><tr><th>块</th><th>地址</th><th>块</th><th>地址</th><th>块数</th><th>Hex</th><th>容量</th></tr></thead>
+						<thead id="smem-thead"><tr><th rowspan="2" data-i18n="名称">名称</th><th colspan="2" data-i18n="起始">起始</th><th colspan="2" data-i18n="结束">结束</th><th colspan="3" data-i18n="大小">大小</th><th rowspan="2" data-i18n="指向">指向</th></tr><tr><th data-i18n="块">块</th><th data-i18n="地址">地址</th><th data-i18n="块">块</th><th data-i18n="地址">地址</th><th data-i18n="块数">块数</th><th>Hex</th><th data-i18n="容量">容量</th></tr></thead>
 						<tbody id="smem-tbody"></tbody>
 					</table>
 				</div>
@@ -55,7 +56,7 @@
 			<div class="tab-content" id="tab-mac">
 				<div class="about-section">
 					<table class="about-table" id="mac-table">
-						<thead><tr><th>接口</th><th>MAC地址</th><th>ART偏移</th><th>校验偏移</th><th>XOR16值</th><th>校验状态</th><th>操作</th></tr></thead>
+						<thead><tr><th data-i18n="接口">接口</th><th data-i18n="MAC地址">MAC地址</th><th data-i18n="ART偏移">ART偏移</th><th data-i18n="校验偏移">校验偏移</th><th data-i18n="XOR16值">XOR16值</th><th data-i18n="校验状态">校验状态</th><th data-i18n="操作">操作</th></tr></thead>
 						<tbody id="mac-tbody"></tbody>
 					</table>
 				</div>

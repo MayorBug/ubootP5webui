@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>终端变量</title>
+	<title data-i18n="终端变量">Terminal &amp; environment</title>
+	<script src="i18n.js?v=r5"></script>
 	<script src="common.js?v=f"></script>
 	<link rel="stylesheet" href="style.css?v=f">
 </head>
@@ -19,16 +20,16 @@
 			<div class="terminal-input-line">
 				<span class="terminal-prompt">></span>
 				<input type="text" class="terminal-input" id="terminalInput" placeholder="输入命令或变量名" autofocus>
-				<button class="terminal-btn" id="sendBtn">发送</button>
-				<button class="terminal-btn" id="abortBtn">中断</button>
-				<button class="terminal-btn terminal-clear" id="clearBtn">清屏</button>
-				<button class="terminal-btn active" id="rebootDev">重启</button>
-				<button class="terminal-btn active" id="envToggle">折叠</button>
+				<button class="terminal-btn" id="sendBtn" data-i18n="发送">发送</button>
+				<button class="terminal-btn" id="abortBtn" data-i18n="中断">中断</button>
+				<button class="terminal-btn terminal-clear" id="clearBtn" data-i18n="清屏">清屏</button>
+				<button class="terminal-btn active" id="rebootDev" data-i18n="重启">重启</button>
+				<button class="terminal-btn active" id="envToggle" data-i18n="折叠">折叠</button>
 				<div class="terminal-dropdown-menu" id="envMenu">
-					<button class="terminal-btn active" id="queryEnv">查询</button>
-					<button class="terminal-btn" id="updateEnv">修改</button>
-					<button class="terminal-btn" id="deleteEnv">删除</button>
-					<button class="terminal-btn active" id="resetEnv">重置</button>
+					<button class="terminal-btn active" id="queryEnv" data-i18n="查询">查询</button>
+					<button class="terminal-btn" id="updateEnv" data-i18n="修改">修改</button>
+					<button class="terminal-btn" id="deleteEnv" data-i18n="删除">删除</button>
+					<button class="terminal-btn active" id="resetEnv" data-i18n="重置">重置</button>
 				</div>
 			</div>
 		</div>
