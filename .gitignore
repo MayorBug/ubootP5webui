@@ -55,6 +55,8 @@ __pycache__/
 #
 !.gitignore
 !.mailmap
+!.github/
+!.github/workflows/
 
 #
 # Generated files
@@ -110,3 +112,6 @@ failsafe/html/debug_output/
 failsafe/lwip/**/*.o
 failsafe/lwip/**/*.su
 failsafe/lwip/**/.*.o.cmd
+# Separate P5 build output
+/out-p5-flash/
+/out-p5-ramtest/

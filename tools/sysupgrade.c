@@ -13,6 +13,29 @@
 
 #include <sysupgrade.h>
 
+/* These BSD interfaces are absent from older host C libraries. */
+static size_t sysupgrade_strlcpy(char *dest, const char *src, size_t size)
+{
+	size_t length = strlen(src);
+
+	if (size) {
+		size_t copied = length < size ? length : size - 1;
+
+		memcpy(dest, src, copied);
+		dest[copied] = '\0';
+	}
+	return length;
+}
+
+static size_t sysupgrade_strlcat(char *dest, const char *src, size_t size)
+{
+	size_t used = strnlen(dest, size);
+
+	if (used == size)
+		return size + strlen(src);
+	return used + sysupgrade_strlcpy(dest + used, src, size - used);
+}
+
 #define SBL_VERSION_FILE       "sbl_version"
 #define TZ_VERSION_FILE        "tz_version"
 #define HLOS_VERSION_FILE      "hlos_version"
@@ -233,9 +256,9 @@ int get_sections(void)
 			if (data_size == -1 && !strncmp(sec->type, "ubi", strlen("ubi")))
 				continue;
 			if (!strncmp(file->d_name, sec->type, strlen(sec->type))) {
-				strlcat(sec->file, file->d_name, sizeof(sec->file));
+				sysupgrade_strlcat(sec->file, file->d_name, sizeof(sec->file));
 				if (sec->pre_op) {
-					strlcat(sec->tmp_file, file->d_name,
+					sysupgrade_strlcat(sec->tmp_file, file->d_name,
 							sizeof(sec->tmp_file));
 					if (!sec->pre_op(sec)) {
 						printf("Error extracting kernel from ubi\n");
@@ -280,9 +303,9 @@ int load_sections(void)
 			if (data_size == -1 && !strncmp(sec->type, "ubi", strlen("ubi")))
 				continue;
 			if (!strncmp(file->d_name, sec->type, strlen(sec->type))) {
-				strlcat(sec->file, file->d_name, sizeof(sec->file));
+				sysupgrade_strlcat(sec->file, file->d_name, sizeof(sec->file));
 				if (sec->pre_op) {
-					strlcat(sec->tmp_file, file->d_name,
+					sysupgrade_strlcat(sec->tmp_file, file->d_name,
 							sizeof(sec->tmp_file));
 					if (!sec->pre_op(sec)) {
 						printf("Error extracting %s from ubi\n",
@@ -450,7 +473,7 @@ char *find_value(char *buffer, char *search, int size)
 	for (i = 0; i < CERT_SIZE; i++) {
 		for (j = 0; search[j] && (buffer[i + j] == search[j]); j++);
 		if (search[j] == '\0') {
-			strlcpy(value, &buffer[i - size], size);
+			sysupgrade_strlcpy(value, &buffer[i - size], size);
 			value[size - 1] = '\0';
 			return value;
 		}
@@ -852,7 +875,7 @@ int extract_kernel_binary(struct image_section *section, char *volname)
 {
 	char *ifname, *ofname;
 
-	strlcpy(section->file, TEMP_KERNEL_PATH, sizeof(TEMP_KERNEL_PATH));
+	sysupgrade_strlcpy(section->file, TEMP_KERNEL_PATH, sizeof(TEMP_KERNEL_PATH));
 	ifname = section->tmp_file;
 	ofname = section->file;
 
@@ -988,8 +1011,8 @@ char * check_image_exist(char *imgname) {
 	{
 		if (strstr(in_file->d_name, imgname)) {
 			printf("%s file found\n", in_file->d_name);
-			strlcat(extension, in_file->d_name, sizeof(extension));
-			strlcpy(in_file->d_name, extension, sizeof(extension));
+			sysupgrade_strlcat(extension, in_file->d_name, sizeof(extension));
+			sysupgrade_strlcpy(in_file->d_name, extension, sizeof(extension));
 			return in_file->d_name;
 		}
 	}
@@ -1595,7 +1618,7 @@ int generate_hash(char *cert, char *sw_file, char *hw_file)
 		free(oem_model_id_str);
 		return 0;
 	}
-	strlcpy(sw_file, tmp, 32);
+	sysupgrade_strlcpy(sw_file, tmp, 32);
 
 	hw_id_str[16] = '\0';
 	generate_hwid_opad(hw_id_str, oem_id_str, oem_model_id_str, &hwid_xor_opad);
@@ -1607,7 +1630,7 @@ int generate_hash(char *cert, char *sw_file, char *hw_file)
 		free(oem_model_id_str);
 		return 0;
 	}
-	strlcpy(hw_file, tmp, 32);
+	sysupgrade_strlcpy(hw_file, tmp, 32);
 
 	free(sw_id_str);
 	free(hw_id_str);

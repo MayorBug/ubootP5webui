@@ -1396,9 +1396,6 @@ $(version_h): include/config/uboot.release FORCE
 
 $(timestamp_h): $(srctree)/Makefile FORCE
 	$(call filechk,timestamp.h)
-#ifdef CONFIG_LWIP_HTTPD
-	cd $(srctree)/failsafe; ./html/makefsdatac; cd -
-#endif
 
 # ---------------------------------------------------------------------------
 quiet_cmd_cpp_lds = LDS     $@
@@ -1470,7 +1467,9 @@ checkdtc:
 checkarmreloc: u-boot
 	@RELOC="`$(CROSS_COMPILE)readelf -r -W $< | cut -d ' ' -f 4 | \
 		grep R_A | sort -u`"; \
-	if test "$$RELOC" != "R_ARM_RELATIVE" -a \
+	if test "$(CONFIG_IPQ5018_CUDY_P5_RAMTEST)" = "y"; then \
+		test -z "$$RELOC" || { echo "$< RAM target must have no ARM relocations"; exit 1; }; \
+	elif test "$$RELOC" != "R_ARM_RELATIVE" -a \
 		 "$$RELOC" != "R_AARCH64_RELATIVE"; then \
 		echo "$< contains unexpected relocations: $$RELOC"; \
 		false; \

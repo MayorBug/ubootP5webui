@@ -1,5 +1,5 @@
 #include "fs_wrapper.h"
-#include "fsdata.c"
+#include <fsdata-generated.c>
 
 static int fs_strcmp(const char *str1, const char *str2)
 {

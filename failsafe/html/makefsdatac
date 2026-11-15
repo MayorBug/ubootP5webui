@@ -15,7 +15,7 @@
 # ===== DEBUG MODE CONFIGURATION =====
 # Set debug_mode to 1 to enable debug output and retain intermediate files
 # Set debug_mode to 0 to disable debug output (no intermediate files saved)
-debug_mode=1
+debug_mode=0
 # ====================================
 
 # ===== COMPRESSION CONFIGURATION =====
@@ -33,27 +33,31 @@ zopfli_iterations=30
 rename_classes=1
 # ======================================
 
-# Parse arguments (command line argument overrides the default setting)
-vendor_dir=${1:-pig}
-
-# Check for debug flag in command line (overrides the default setting)
-if [[ "$2" == "-d" || "$2" == "--debug" ]]; then
-    debug_mode=1
-elif [ $debug_mode -eq 1 ]; then
-    :
-fi
-
-# Check for zopfli iterations override
-if [[ "$2" =~ ^--iterations=[0-9]+$ ]]; then
-    zopfli_iterations=${2#--iterations=}
-elif [[ "$3" =~ ^--iterations=[0-9]+$ ]]; then
-    zopfli_iterations=${3#--iterations=}
-fi
-
-# Vendor specific directory (default: "pig")
-
-# Config directory
-config_dir="$(dirname "$0")/npmjson"
+# Keep the existing processing pipeline in a private workspace. No source or
+# output tree shares scratch files, class-renaming output, or zopfli probes.
+set -e
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+vendor_dir=pig
+output="$script_dir/../fsdata.c"
+for arg in "$@"; do
+    case "$arg" in
+        --output=*) output=${arg#--output=} ;;
+        --iterations=*) zopfli_iterations=${arg#--iterations=} ;;
+        -d|--debug) debug_mode=1 ;;
+        --*) echo "Unknown option: $arg" >&2; exit 2 ;;
+        *) vendor_dir=$arg ;;
+    esac
+done
+mkdir -p "$(dirname -- "$output")"
+output="$(cd -- "$(dirname -- "$output")" && pwd)/$(basename -- "$output")"
+work_dir=$(mktemp -d "${output}.work.XXXXXX")
+trap 'if [ "$debug_mode" -eq 0 ]; then rm -rf "$work_dir"; else echo "Debug workspace: $work_dir" >&2; fi' EXIT
+mkdir -p "$work_dir/html"
+cp -R "$script_dir/$vendor_dir" "$work_dir/html/$vendor_dir"
+cp "$script_dir/rename_classes.js" "$work_dir/html/"
+config_dir="$script_dir/npmjson"
+cd "$work_dir"
+export TMPDIR="$work_dir"
 
 # Temporary files
 files_content_tmp="html/.files_content"
@@ -149,13 +153,13 @@ fi
 
 # Check for zopfli (Google's gzip optimizer)
 if command -v zopfli >/dev/null 2>&1; then
-    echo "test" > /tmp/zopfli_test.txt
-    if zopfli --i1 /tmp/zopfli_test.txt 2>/dev/null && [ -f /tmp/zopfli_test.txt.gz ]; then
+    echo "test" > "$work_dir/zopfli_test.txt"
+    if zopfli --i1 "$work_dir/zopfli_test.txt" 2>/dev/null && [ -f "$work_dir/zopfli_test.txt.gz" ]; then
         zopfli_available=1
         zopfli_version=$(dpkg -l zopfli 2>/dev/null | grep zopfli | awk '{print $3}' | cut -d'-' -f1 || rpm -q zopfli 2>/dev/null | grep -oP '\d+\.\d+\.\d+' || echo "")
-        rm -f /tmp/zopfli_test.txt.gz
+        rm -f "$work_dir/zopfli_test.txt.gz"
     fi
-    rm -f /tmp/zopfli_test.txt
+    rm -f "$work_dir/zopfli_test.txt"
 fi
 
 # Determine compression backend
@@ -654,3 +658,5 @@ else
 	echo "Error: Vendor directory html/$vendor_dir does not exist!" >&2
 	exit 1
 fi
+# Publish only a complete file; a failed run leaves the previous output intact.
+mv fsdata.c "$output"

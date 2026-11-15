@@ -291,14 +291,18 @@ quiet_cmd_dt_comb_S_dtb= DTB_COMB     $@
 # Modified for U-Boot Combined ELF
 #get the Magic
 cmd_dt_comb_S_dtb=							\
-	dtbmachid=`cat "$(obj)/$(*F).dts" | grep machid | 		\
+	dtbmachid=`cat "$(srctree)/$(src)/$(*F).dts" | grep machid | 		\
 	cut -f 2 -d '<' | cut -f 1 -d '>'` ; 				\
 	if [ -e $$dtbmachid ];						\
 	then								\
-		echo "Need to specify \"machid\" in dts $(obj)/$(*F).dts "; \
+		echo "Need to specify \"machid\" in dts $(srctree)/$(src)/$(*F).dts "; \
 		exit 1;							\
 	fi;								\
 	machiddec=`printf %d $$dtbmachid`;				\
+	if [ "$(CONFIG_IPQ5018_CUDY_P5)" = "y" ]; then \
+		printf '.section .dtb.combine_table,"a"\n.balign 16\n.global __dtb_table_start\n__dtb_table_start:\n.word 1\n.extern __dtb_begin_%s\n.word %s\n.word __dtb_begin_%s\n' \
+			$$machiddec $$machiddec $$machiddec > $(obj)/dtbtable.S; \
+	else \
 	if [ ! -f $(obj)/dtbtable.S ];					\
 	then								\
 		echo ".section .dtb.combine_table,\"a\"" > $(obj)/dtbtable.S; \
@@ -314,8 +318,9 @@ cmd_dt_comb_S_dtb=							\
 	num=$$(expr $$num + 1);						\
 	sed -i '5 d' $(obj)/dtbtable.S;					\
 	sed -i "5 i .word $$num" $(obj)/dtbtable.S;			\
+	fi; \
 (									\
-	dtbmachid=`cat "$(obj)/$(*F).dts" | grep machid | 		\
+	dtbmachid=`cat "$(srctree)/$(src)/$(*F).dts" | grep machid | 		\
 	cut -f 2 -d '<' | cut -f 1 -d '>'` ; 				\
 	machiddec=`printf %d $$dtbmachid`;				\
 	echo ".section .dtb.combine_$$machiddec,\"a\"";			\
