@@ -1,0 +1,107 @@
+name: Build and test Cudy P5 U-Boot
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  p5:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      TOOLCHAIN_COMMIT: 0daf0879219130c46812cd5029fbcc2940316b16
+      TZ: UTC
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential libncurses-dev gawk gettext libssl-dev \
+            python3-venv zlib1g-dev libfdt-dev wget cpio flex bison bc rsync zopfli device-tree-compiler
+          python3 -m venv "$RUNNER_TEMP/p5-python"
+          "$RUNNER_TEMP/p5-python/bin/pip" install unicorn==2.1.4
+          echo "$RUNNER_TEMP/p5-python/bin" >> "$GITHUB_PATH"
+          npm install --prefix "$RUNNER_TEMP/p5-node" --no-audit --no-fund \
+            html-minifier-terser@7.2.0 clean-css@5.3.3 terser@5.44.0 svgo@4.0.0 playwright@1.61.1
+          echo "NODE_PATH=$RUNNER_TEMP/p5-node/node_modules" >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/p5-node/node_modules/.bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/p5-node/node_modules/.bin/playwright" install --with-deps chromium
+
+      - name: Fetch pinned ARM toolchain
+        run: |
+          toolchain="$RUNNER_TEMP/p5-toolchain"
+          git init "$toolchain"
+          git -C "$toolchain" remote add origin https://github.com/1980490718/toolchain-arm_cortex-a7_gcc-5.2.0.git
+          git -C "$toolchain" fetch --depth=1 origin "$TOOLCHAIN_COMMIT"
+          git -C "$toolchain" checkout --detach FETCH_HEAD
+          test "$(git -C "$toolchain" rev-parse HEAD)" = "$TOOLCHAIN_COMMIT"
+          cross="$toolchain/toolchain-arm_cortex-a7_gcc-5.2.0_musl-1.1.16_eabi/bin/arm-openwrt-linux-"
+          test -x "${cross}gcc"
+          echo "P5_CROSS=$cross" >> "$GITHUB_ENV"
+
+      - name: Build RAM recovery image
+        run: ./tools/p5/build-ramtest.sh "$P5_CROSS"
+
+      - name: Build flash package
+        run: ./tools/p5/build-flash-candidate.sh "$P5_CROSS"
+
+      - name: Test production C backends and package tooling
+        run: |
+          python3 tools/p5/test-install.py
+          python3 tools/p5/test-modem.py
+          python3 tools/p5/test-flash-package.py
+          python3 tools/p5/test-factory.py
+          python3 tools/p5/test-storage.py
+          python3 tools/p5/test-storage-packages.py
+          python3 tools/p5/test-storage-http.py
+          python3 tools/p5/test-web-assets.py
+          python3 tools/p5/test-chain.py
+          python3 tools/p5/test-network.py
+          python3 tools/p5/test-autoboot.py
+          python3 tools/p5/test-memory-report.py
+          python3 tools/p5/test-host-strings.py
+          node tools/p5/test-recovery.cjs
+
+      - name: Test source and embedded web pages
+        run: |
+          node tools/p5/test-web-ui.cjs
+          node tools/p5/test-gpio-ui.cjs
+          for target in ramtest flash; do
+            ui="$RUNNER_TEMP/p5-ui-$target"
+            python3 tools/p5/extract-web-ui.py "out-p5-$target/u-boot" "$ui"
+            P5_UI_ROOT="$ui" node tools/p5/test-web-ui.cjs
+            P5_UI_ROOT="$ui" node tools/p5/test-gpio-ui.cjs
+          done
+
+      - name: Add memory reports to summary
+        run: |
+          for target in ramtest/ram-only flash/candidate; do
+            {
+              printf '\n```text\n'
+              cat "out-p5-$target/memory-report.txt"
+              printf '```\n'
+            } >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Upload checked P5 images and reports
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cudy-p5-uboot-${{ github.sha }}
+          path: |
+            out-p5-ramtest/ram-only/p5-ramtest-NOT-FOR-FLASH.elf
+            out-p5-ramtest/ram-only/memory-report.txt
+            out-p5-ramtest/ram-only/SHA256SUMS
+            out-p5-flash/candidate/p5-uboot.mbn
+            out-p5-flash/candidate/memory-report.txt
+            out-p5-flash/candidate/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
