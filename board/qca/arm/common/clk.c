@@ -77,7 +77,8 @@ void spi_clock_init(int spi_id)
 }
 #endif
 
-#if defined(CONFIG_QPIC_NAND) && defined(CONFIG_QSPI_SERIAL_TRAINING)
+#if defined(CONFIG_QPIC_NAND) && \
+	(defined(CONFIG_QSPI_SERIAL_TRAINING) || defined(CONFIG_IPQ5018_CUDY_P5))
 __weak void qpic_set_clk_rate(unsigned int clk_rate, int blk_type,
 				int req_clk_src_type)
 {

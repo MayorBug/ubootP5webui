@@ -51,6 +51,40 @@ int get_eth_mac_address(uchar *enetaddr, uint no_of_macs)
 	u32 flash_type;
 	loff_t art_offset;
 	qca_smem_flash_info_t *sfi = &qca_smem_flash_info;
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	/* P5 identity is in bdinfo, not the generic ART MAC slots.
+	 * Match Linux: GMAC0 uses base + 1; GMAC1 uses the base.
+	 */
+	{
+		uchar base[6], next[6];
+		size_t bytes = sizeof(base);
+		int i;
+
+		if (no_of_macs < 1 || no_of_macs > 2)
+			return -EINVAL;
+		ret = smem_getpart("bdinfo", &start_blocks, &size_blocks);
+		if (ret < 0)
+			return ret;
+		if ((u64)size_blocks * sfi->flash_block_size < 0xde00 + sizeof(base))
+			return -EINVAL;
+		ret = nand_read(&nand_info[CONFIG_NAND_FLASH_INFO_IDX],
+			(loff_t)start_blocks * sfi->flash_block_size + 0xde00,
+			&bytes, base);
+		if (ret < 0 || bytes != sizeof(base) || !is_valid_ethaddr(base))
+			return -EINVAL;
+		memcpy(next, base, sizeof(next));
+		for (i = 5; i >= 0; i--)
+			if (++next[i])
+				break;
+		if (!is_valid_ethaddr(next))
+			return -EINVAL;
+		memcpy(enetaddr, next, sizeof(next));
+		if (no_of_macs == 2)
+			memcpy(enetaddr + 6, base, sizeof(base));
+		return 0;
+	}
+#endif
+
 #ifdef CONFIG_QCA_MMC
 	block_dev_desc_t *blk_dev;
 	disk_partition_t disk_info;

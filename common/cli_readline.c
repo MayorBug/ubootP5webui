@@ -515,13 +515,6 @@ int cli_readline_into_buffer(const char *const prompt, char *buffer,
 			initted = 1;
 		}
 
-#ifdef CONFIG_LWIP_HTTPD
-		while (!tstc()) {
-			WATCHDOG_RESET();
-			httpd_poll();
-		}
-#endif
-
 		if (prompt)
 			puts(prompt);
 
@@ -535,13 +528,6 @@ int cli_readline_into_buffer(const char *const prompt, char *buffer,
 	int	plen = 0;			/* prompt length	*/
 	int	col;				/* output column cnt	*/
 	char	c;
-
-#ifdef CONFIG_LWIP_HTTPD
-	while (!tstc()) {
-		WATCHDOG_RESET();
-		httpd_poll();
-	}
-#endif
 
 	/* print prompt */
 	if (prompt) {

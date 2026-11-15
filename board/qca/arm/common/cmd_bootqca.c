@@ -14,6 +14,10 @@
 #include <common.h>
 #include <command.h>
 #include <bootm.h>
+#ifdef CONFIG_IPQ5018_CUDY_P5
+#include <p5_recovery.h>
+#include <p5_storage.h>
+#endif
 #include <image.h>
 #include <nand.h>
 #include <errno.h>
@@ -976,6 +980,12 @@ static int do_bootipq(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 #ifndef CONFIG_DISABLE_SIGNED_BOOT
 	char buf = 0;
 #endif
+	#ifdef CONFIG_IPQ5018_CUDY_P5
+	if (p5_storage_boot_blocked() || p5_install_boot_blocked()) {
+		puts("P5: installed boot refused after storage changes or an incomplete write. Remain in recovery.\n");
+		return CMD_RET_FAILURE;
+	}
+	#endif
 	/*
 	 * set fdt_high parameter so that u-boot will not load
 	 * dtb above CONFIG_IPQ40XX_FDT_HIGH region.

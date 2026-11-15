@@ -1244,7 +1244,10 @@ int board_eth_init(bd_t *bis)
 		 gmac_cfg[loop].unit = -1;
 
 	status = ipq_gmac_init(gmac_cfg);
+#ifndef CONFIG_IPQ5018_CUDY_P5
+	/* P5 has no slot_Id mapping for this optional oscillator adjustment. */
 	board_update_caldata();
+#endif
 
 	return status;
 }

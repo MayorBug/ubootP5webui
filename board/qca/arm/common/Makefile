@@ -19,3 +19,8 @@ obj-y += fdt_fixup.o
 obj-y += ethaddr.o
 obj-$(CONFIG_MACADDR_MODIFY) += macaddr_modify.o
 obj-$(CONFIG_QCA_APPSBL_DLOAD) += crashdump.o
+obj-$(CONFIG_IPQ5018_CUDY_P5_RAMTEST) += p5_ramtest_entry.o
+
+obj-$(CONFIG_IPQ5018_CUDY_P5) += p5_recovery.o p5_chain.o p5_install.o
+
+obj-$(CONFIG_IPQ5018_CUDY_P5) += p5_mibib.o p5_storage.o p5_modem.o p5_factory.o

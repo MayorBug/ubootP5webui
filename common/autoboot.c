@@ -15,6 +15,10 @@
 #include <post.h>
 #include <u-boot/sha256.h>
 #include <asm/arch-qca-common/qca_common.h>
+#ifdef CONFIG_IPQ5018_CUDY_P5
+#include <ipq_api.h>
+#include <p5_recovery.h>
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -225,12 +229,19 @@ static int abortboot_normal(int bootdelay)
 {
 	int abort = 0;
 	unsigned long ts;
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	char button_name[64];
+#endif
 
 #ifdef CONFIG_MENUPROMPT
 	printf(CONFIG_MENUPROMPT);
 #else
 	if (bootdelay >= 0)
+#ifdef CONFIG_IPQ5018_CUDY_P5
+		printf("Press any key, WPS or Reset for recovery: %2d ", bootdelay);
+#else
 		printf("Hit any key to stop autoboot: %2d ", bootdelay);
+#endif
 #endif
 
 #if defined CONFIG_ZERO_BOOTDELAY_CHECK
@@ -249,6 +260,9 @@ static int abortboot_normal(int bootdelay)
 
 	while ((bootdelay > 0) && (!abort)) {
 		--bootdelay;
+#ifdef CONFIG_IPQ5018_CUDY_P5
+		led_toggle("power_led");
+#endif
 		/* delay 1000 ms */
 		ts = get_timer(0);
 		do {
@@ -262,6 +276,14 @@ static int abortboot_normal(int bootdelay)
 # endif
 				break;
 			}
+#ifdef CONFIG_IPQ5018_CUDY_P5
+			if (btn_pressed(button_name, sizeof(button_name))) {
+				printf("\n%s button pressed; entering recovery\n", button_name);
+				abort = 1;
+				bootdelay = 0;
+				break;
+			}
+#endif
 			udelay(10000);
 		} while (!abort && get_timer(ts) < 1000);
 
@@ -436,10 +458,14 @@ void autoboot_command(const char *s)
 	}
 #ifdef CONFIG_LWIP_HTTPD
 	else if (stored_bootdelay != -1) {
+#ifdef CONFIG_IPQ5018_CUDY_P5
+		p5_network_start();
+#else
 #ifndef CONFIG_IPQ40XX
 		eth_initialize();
 #endif
 		run_command("httpd", 0);
+#endif
 		return;
 	}
 #endif

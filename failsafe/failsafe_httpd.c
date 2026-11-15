@@ -1,4 +1,8 @@
 #include <common.h>
+#ifdef CONFIG_IPQ5018_CUDY_P5
+#include <p5_recovery.h>
+#include <p5_modem.h>
+#endif
 #include <net.h>
 #include "../net/httpd.h"
 #include <malloc.h>
@@ -115,6 +119,22 @@ static struct {
 } backup;
 
 int upgrade_status = 0;
+#ifdef CONFIG_IPQ5018_CUDY_P5
+#include <p5_storage.h>
+#define P5_UPLOAD_RAM_ONLY 100
+static ulong p5_ram_size;
+static u32 p5_ram_crc;
+static int p5_boot_pending;
+static ulong p5_boot_size;
+static u32 p5_boot_crc;
+static ulong p5_boot_deadline;
+static char p5_action[240];
+static unsigned p5_action_sequence;
+static int p5_action_pending, p5_action_result;
+static ulong p5_action_deadline;
+#endif
+static ulong httpd_transfer_capacity(void);
+
 static char part_json_buf[PART_JSON_BUF_SIZE];
 static struct failsafe_httpd_state *hs_global;
 
@@ -174,6 +194,9 @@ static void httpd_state_reset(struct failsafe_httpd_state *hs) {
 	hs->dataptr = 0;
 	hs->upload = 0;
 	hs->upload_total = 0;
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	hs->p5_request_len = 0;
+#endif
 	if (hs->owns_global) {
 		int done = upload.done, failed = upload.failed;
 		hs->owns_global = 0;
@@ -213,6 +236,9 @@ static err_t httpd_recv_abort(struct failsafe_httpd_state *hs, struct tcp_pcb *p
 typedef u64 (*get_max_size_fn)(void);
 
 static const struct { const char *name; int type; const char *label; get_max_size_fn get_max_size; } upload_types[] = {
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	{"name=\"ram_image\"", P5_UPLOAD_RAM_ONLY, "RAM staging (boot or flash requires a separate action)", NULL},
+#endif
 	{"name=\"firmware\"",	WEBFAILSAFE_UPGRADE_TYPE_FIRMWARE,	"FIRMWARE",	get_firmware_upgrade_max_size},
 	{"name=\"uboot\"",		WEBFAILSAFE_UPGRADE_TYPE_UBOOT,		"U-Boot",	get_uboot_size},
 	{"name=\"art\"",		WEBFAILSAFE_UPGRADE_TYPE_ART,		"ART",		get_art_size},
@@ -278,6 +304,12 @@ static int httpd_findandstore_firstchunk(struct failsafe_httpd_state *hs, char *
 	hs->upload_total = hs->upload_total - (int)(end - start) - strlen(boundary_value) - 6;
 	printf("Upload size: %u.%02u MiB [%u bytes | 0x%x]\n", (u32)mib_int(hs->upload_total), (u32)mib_frac(hs->upload_total), hs->upload_total, hs->upload_total);
 
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	if (!hs->upload_total || hs->upload_total > httpd_transfer_capacity()) {
+		upload.failed = 1;
+		upload.file_too_big = 1;
+	}
+#endif
 	if (upload_types[i].get_max_size) {
 		u64 max_size = upload_types[i].get_max_size();
 		if ((u64)hs->upload_total > max_size) {
@@ -341,10 +373,19 @@ static int httpd_parse_boundary(char *data) {
 	return -1;
 }
 
+static ulong httpd_transfer_capacity(void)
+{
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	return 32UL << 20;
+#else
+	return CONFIG_SYS_SDRAM_END - WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
+#endif
+}
+
 static int httpd_init_upload_ram(void) {
 	u32_t memset_len;
 	webfailsafe_data_pointer = (u8_t *)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
-	upload.ram_end = (u32_t)CONFIG_SYS_SDRAM_END;
+	upload.ram_end = WEBFAILSAFE_UPLOAD_RAM_ADDRESS + httpd_transfer_capacity();
 	if (!webfailsafe_data_pointer) {
 		print_error("couldn't allocate RAM for data!");
 		return -1;
@@ -362,7 +403,11 @@ static int httpd_init_upload_ram(void) {
 }
 
 static int httpd_check_upload_size(struct failsafe_httpd_state *hs) {
-	if (hs->upload_total < 10240 && webfailsafe_upgrade_type != WEBFAILSAFE_UPGRADE_TYPE_CDT) {
+	if (hs->upload_total < 10240 && webfailsafe_upgrade_type != WEBFAILSAFE_UPGRADE_TYPE_CDT
+#ifdef CONFIG_IPQ5018_CUDY_P5
+		&& webfailsafe_upgrade_type != P5_UPLOAD_RAM_ONLY
+#endif
+	) {
 		print_error("request for upload < 10 KB data!");
 		return -1;
 	}
@@ -458,6 +503,136 @@ static void httpd_send_static(struct failsafe_httpd_state *hs, const char *data,
 	hs->upload = len;
 	httpd_send_data(hs);
 }
+
+#ifdef CONFIG_IPQ5018_CUDY_P5
+static void httpd_handle_ram_status(struct failsafe_httpd_state *hs)
+{
+	static char response[384];
+	char body[192];
+	int size, length;
+
+	size = snprintf(body, sizeof(body), "{\"valid\":%s,\"bytes\":%lu,\"address\":%lu,\"crc32\":\"%08x\",\"limit\":%lu,\"executed\":false}",
+		p5_ram_size ? "true" : "false", p5_ram_size,
+		(ulong)WEBFAILSAFE_UPLOAD_RAM_ADDRESS, p5_ram_crc, httpd_transfer_capacity());
+	length = snprintf(response, sizeof(response), "HTTP/1.0 200 OK\r\nCache-Control: no-store\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s", size, body);
+	httpd_send_static(hs, response, length);
+}
+#endif
+
+#ifdef CONFIG_IPQ5018_CUDY_P5
+static void httpd_handle_p5_storage_status(struct failsafe_httpd_state *hs)
+{
+ static char response[384]; char body[128]; int length, size;
+ size = snprintf(body, sizeof(body), "{\"busy\":%s,\"sequence\":%u,\"result\":%d}",
+   p5_action_pending ? "true" : "false", p5_action_sequence, p5_action_result);
+ length = snprintf(response, sizeof(response), "HTTP/1.0 200 OK\r\nCache-Control: no-store\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s", size, body);
+ httpd_send_static(hs, response, length);
+}
+
+static void httpd_handle_p5_modem(struct failsafe_httpd_state *hs, char *data, int data_len)
+{
+	char *body = strstr(data, "\r\n\r\n"), *line;
+	int header_ok = 0, ok = 0;
+	static const char yes[] = "HTTP/1.0 200 OK\r\nCache-Control: no-store\r\nConnection: close\r\n\r\nok";
+	static const char no[] = "HTTP/1.0 409 Conflict\r\nCache-Control: no-store\r\nConnection: close\r\n\r\nModem action failed. Reload and check UART.";
+	for (line = strstr(data, "\r\n"); line && body && line < body; line = strstr(line + 2, "\r\n"))
+		if (!strncasecmp(line + 2, "X-P5-Recovery: 1\r\n", 18)) header_ok = 1;
+	if (body && header_ok && !p5_action_pending && !p5_boot_pending && !hs_global && !p5_storage_busy()) {
+		body += 4;
+		if (strlen(body) == (unsigned)(data_len - (body - data)))
+			ok = p5_modem_action(body) == 0;
+	}
+	httpd_send_static(hs, ok ? yes : no, ok ? sizeof(yes) - 1 : sizeof(no) - 1);
+}
+
+static void httpd_handle_p5_storage(struct failsafe_httpd_state *hs, char *data, int data_len)
+{
+ char *body = strstr(data, "\r\n\r\n"), *line;
+ static char response[256]; int length, header_ok = 0;
+ static const char no[] = "HTTP/1.0 409 Conflict\r\nConnection: close\r\n\r\nStorage request refused. No action queued.";
+ /* Require a custom header: cross-origin forms cannot issue storage actions. */
+ for (line = strstr(data, "\r\n"); line && body && line < body; line = strstr(line + 2, "\r\n"))
+  if (!strncasecmp(line + 2, "X-P5-Recovery: 1\r\n", 18)) header_ok = 1;
+#ifndef CONFIG_P5_EXPERIMENTAL_STORAGE_WRITES
+ goto refused;
+#endif
+ if (!body || !header_ok || p5_action_pending || p5_boot_pending || hs_global ||
+     httpd_parse_content_length(hs, data) || !hs->upload_total || hs->upload_total >= sizeof(p5_action)) goto refused;
+ body += 4;
+ if (hs->upload_total != (unsigned long)(data_len - (body - data)) || strlen(body) != hs->upload_total ||
+     strchr(body, '\r') || strchr(body, '\n')) goto refused;
+ memcpy(p5_action, body, hs->upload_total + 1);
+ p5_action_sequence++; if (!p5_action_sequence) p5_action_sequence++;
+ p5_action_pending = 1; p5_action_result = -EINPROGRESS;
+ p5_action_deadline = get_timer(0) + 250;
+ length = snprintf(response, sizeof(response), "HTTP/1.0 202 Accepted\r\nCache-Control: no-store\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{\"queued\":true,\"sequence\":%u}", p5_action_sequence);
+ httpd_send_static(hs, response, length); return;
+refused:
+ httpd_send_static(hs, no, sizeof(no) - 1);
+}
+
+static void httpd_handle_p5_boot(struct failsafe_httpd_state *hs, char *data, int data_len)
+{
+	char *body = strstr(data, "\r\n\r\n");
+	int kind = 0;
+	unsigned bytes = 0, crc = 0;
+	char *cursor, *end;
+	unsigned i;
+	static const char ok[] = "HTTP/1.0 202 Accepted\r\nCache-Control: no-store\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{\"queued\":true}";
+	static const char no[] = "HTTP/1.0 400 Bad Request\r\nCache-Control: no-store\r\nConnection: close\r\n\r\nBoot refused: invalid image, stale upload or pending action. Use an uploaded initramfs image or fixed-address P5 RAM-test ELF.";
+
+	if (!body || p5_boot_pending || p5_action_pending || hs_global)
+		goto refused;
+	body += 4;
+	if (httpd_parse_content_length(hs, data) || hs->upload_total > 64 ||
+	    hs->upload_total != (unsigned long)(data_len - (body - data)) || strlen(body) != hs->upload_total)
+		goto refused;
+	if (!strcmp(body, "installed")) {
+		kind = P5_BOOT_INSTALLED;
+	} else {
+		if (!strncmp(body, "initramfs,", 10)) {
+			kind = P5_BOOT_INITRAMFS;
+			cursor = body + 10;
+		} else if (!strncmp(body, "flash,", 6)) {
+			kind = P5_BOOT_FLASH_TEST;
+			cursor = body + 6;
+		} else if (!strncmp(body, "install,", 8)) {
+			kind = P5_INSTALL_CHECK;
+			cursor = body + 8;
+		} else if (!strncmp(body, "uboot,", 6)) {
+			kind = P5_BOOT_UBOOT;
+			cursor = body + 6;
+		} else {
+			goto refused;
+		}
+		bytes = simple_strtoul(cursor, &end, 10);
+		if (end == cursor || *end != ',' || strlen(end + 1) != 8)
+			goto refused;
+		cursor = end + 1;
+		for (i = 0; i < 8; i++)
+			if (!strchr("0123456789abcdefABCDEF", cursor[i]))
+				goto refused;
+		crc = simple_strtoul(cursor, NULL, 16);
+		if (!kind || !bytes || bytes != p5_ram_size || crc != p5_ram_crc ||
+		    crc32(0, (const unsigned char *)WEBFAILSAFE_UPLOAD_RAM_ADDRESS, bytes) != crc ||
+		    p5_boot_check(kind, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, bytes))
+			goto refused;
+	}
+	if (kind == P5_INSTALL_CHECK) {
+		static const char checked[] = "HTTP/1.0 200 OK\r\nCache-Control: no-store\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{\"checked\":true}";
+		httpd_send_static(hs, checked, sizeof(checked) - 1);
+		return;
+	}
+	p5_boot_pending = kind;
+	p5_boot_size = bytes;
+	p5_boot_crc = crc;
+	p5_boot_deadline = get_timer(0) + 1000;
+	httpd_send_static(hs, ok, sizeof(ok) - 1);
+	return;
+refused:
+	httpd_send_static(hs, no, sizeof(no) - 1);
+}
+#endif
 
 static void httpd_handle_upgrade_status(struct failsafe_httpd_state *hs) {
 	static const char *status_text[] = {"idle", "verifying", "flashing", "type_mismatch", "rebooting", "upgrade_done"};
@@ -694,6 +869,19 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 	int pos = 0, hdr_len;
 	char hdr[128];
 	pos += sprintf(about_json_buf + pos, "{\"version\":\"%s\",", version_string);
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	pos += sprintf(about_json_buf + pos, "\"p5_recovery\":true,\"p5_modem_boot\":%s,\"p5_modem_reset_boot\":%s,", p5_modem_boot_enabled() ? "true" : "false", p5_modem_reset_boot_enabled() ? "true" : "false");
+#ifdef CONFIG_P5_EXPERIMENTAL_STORAGE_WRITES
+	pos += sprintf(about_json_buf + pos, "\"storage_writes\":true,");
+#else
+	pos += sprintf(about_json_buf + pos, "\"storage_writes\":false,");
+#endif
+#ifdef CONFIG_IPQ5018_CUDY_P5_RAMTEST
+	pos += sprintf(about_json_buf + pos, "\"ram_test\":true,");
+#else
+	pos += sprintf(about_json_buf + pos, "\"ram_test\":false,");
+#endif
+#endif
 	pos += sprintf(about_json_buf + pos, "\"machid\":\"0x%lx\",", gd->bd->bi_arch_number);
 	pos += sprintf(about_json_buf + pos, "\"ram_size\":%lu,", (ulong)gd->ram_size);
 
@@ -914,6 +1102,11 @@ static void httpd_handle_about(struct failsafe_httpd_state *hs) {
 #ifdef CONFIG_IPQ5018
 			extern int ipq5018_mdio_read(int mii_id, int regnum, ushort *data);
 			pos = phy_scan_mdio(pos, &ps_first, ipq5018_mdio_read);
+#ifdef CONFIG_IPQ5018_CUDY_P5
+			/* The P5 switch is on MDIO1, separate from the internal GE PHY. */
+			extern int ipq_mdio_read(int mii_id, int regnum, ushort *data);
+			pos = phy_scan_mdio(pos, &ps_first, ipq_mdio_read);
+#endif
 #elif defined(CONFIG_RTL8372N_SWITCH)
 			extern int rtl8372n_c22_read(int mdio_addr, int regnum, ushort *data);
 			pos = phy_scan_mdio(pos, &ps_first, rtl8372n_c22_read);
@@ -1079,7 +1272,12 @@ static void httpd_handle_mac_info(struct failsafe_httpd_state *hs) {
 		if (macaddr_read_wifi(wifi_macs[i], i) >= 0 && is_valid_ethaddr(wifi_macs[i]))
 			wifi_valid |= (1 << i);
 
-	pos += sprintf(buf + pos, "{\"mac_addr\":\"");
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	pos += sprintf(buf + pos, "{\"mac_editable\":false,\"mac_source\":\"bdinfo+0xde00 (GMAC0=base+1, GMAC1=base)\",");
+#else
+	pos += sprintf(buf + pos, "{\"mac_source\":\"ART\",");
+#endif
+	pos += sprintf(buf + pos, "\"mac_addr\":\"");
 	{
 		uchar mb[CONFIG_IPQ_NO_MACS * 6];
 		int r = get_eth_mac_address(mb, CONFIG_IPQ_NO_MACS);
@@ -1088,7 +1286,11 @@ static void httpd_handle_mac_info(struct failsafe_httpd_state *hs) {
 	}
 	pos += sprintf(buf + pos, "\",\"mac_off\":\"");
 	for (i = 0; i < CONFIG_IPQ_NO_MACS; i++)
+#ifdef CONFIG_IPQ5018_CUDY_P5
+		pos += sprintf(buf + pos, "%sbdinfo+0xDE00%s", i ? ", " : "", i == 0 ? " (base+1)" : "");
+#else
 		pos += sprintf(buf + pos, "%s0x%X", i ? ", " : "", i * 6);
+#endif
 	pos += sprintf(buf + pos, "\",\"wifi_mac\":\"");
 	for (i = 0, n = 0; i < MACADDR_WIFI_MAX; i++)
 		if (wifi_valid & (1 << i))
@@ -1122,6 +1324,10 @@ static void httpd_handle_mac_set(struct failsafe_httpd_state *hs, char *data, in
 	int len, ok = 0, type = -1, index = -1;
 	char *body = strstr(data, "\r\n\r\n"), *s;
 	u8 mac[6];
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	/* The generic ART write layout does not apply to the P5. */
+	body = NULL;
+#endif
 	if (body) {
 		body += 4;
 		if ((s = strstr(body, "iface="))) {
@@ -1180,7 +1386,11 @@ static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 	get_current_flash_type(&flash_type);
 	bsize = sfi->flash_block_size;
 
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	pos += sprintf(part_json_buf + pos, "{\"source\":\"smem\",\"read_only\":true,\"parts\":[");
+#else
 	pos += sprintf(part_json_buf + pos, "{\"parts\":[");
+#endif
 
 #ifdef CONFIG_QCA_MMC
 	if (flash_type == SMEM_BOOT_MMC_FLASH) {
@@ -1228,7 +1438,7 @@ static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 #else
 		,"false",0UL,0UL
 #endif
-		,(ulong)(CONFIG_SYS_SDRAM_END - WEBFAILSAFE_UPLOAD_RAM_ADDRESS)
+		,httpd_transfer_capacity()
 #ifdef CONFIG_QCA_MMC
 		,(blk_dev ? "true" : "false")
 		,(u64)(blk_dev ? (u64)blk_dev->lba * (u64)blk_dev->blksz : 0ULL)
@@ -1254,6 +1464,14 @@ static void httpd_handle_partitions(struct failsafe_httpd_state *hs) {
 }
 
 static void httpd_handle_backup(struct failsafe_httpd_state *hs, char *data, int data_len) {
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	if (p5_boot_pending || p5_action_pending) {
+		static const char busy[] = "HTTP/1.0 409 Conflict\r\nConnection: close\r\n\r\nBoot action pending";
+		httpd_send_static(hs, busy, sizeof(busy) - 1);
+		return;
+	}
+	p5_ram_size = 0;
+#endif
 	char *query = strchr(&data[4], '?'), part_name[64], filename[96], *size_param, *amp;
 	ulong offset, size;
 	int hdr_len, raw = 0;
@@ -1292,7 +1510,7 @@ static void httpd_handle_backup(struct failsafe_httpd_state *hs, char *data, int
 		return;
 	}
 
-	ram_avail = (u32_t)CONFIG_SYS_SDRAM_END - (u32_t)WEBFAILSAFE_UPLOAD_RAM_ADDRESS;
+	ram_avail = (u32_t)httpd_transfer_capacity();
 	backup.chunked = (total_size > ram_avail) ? 1 : 0;
 	backup.raw = raw;
 	backup.total_size = total_size;
@@ -1445,7 +1663,7 @@ void httpd_send_data(struct failsafe_httpd_state *hs) {
 }
 
 static void backup_chunk_next(void) {
-	u32_t ram_avail = (u32_t)CONFIG_SYS_SDRAM_END - (u32_t)WEBFAILSAFE_UPLOAD_RAM_ADDRESS,
+	u32_t ram_avail = (u32_t)httpd_transfer_capacity(),
 		  chunk_size = (backup.total_remaining > ram_avail) ? ram_avail : (u32)backup.total_remaining;
 	ulong rd_size;
 	char chunk_detail[32] = "";
@@ -1528,6 +1746,59 @@ static err_t httpd_sent(void *arg, struct tcp_pcb *pcb, u16_t len) {
 	return ERR_OK;
 }
 
+/* Retain small P5 command requests across TCP receives, per connection. */
+#ifdef CONFIG_IPQ5018_CUDY_P5
+static int httpd_p5_request_complete(struct failsafe_httpd_state *hs, char *data, unsigned length)
+{
+	char *body, *number, *line = strstr(data, "\r\n");
+	unsigned limit, bytes;
+
+	if (line) {
+		if (strncmp(data, "POST", 4) || !is_http_method_separator(data[4]))
+			return 1;
+		if (!strncmp(data + 5, "/p5_storage", 11) && is_http_whitespace(data[16]))
+			limit = sizeof(p5_action) - 1;
+		else if (!strncmp(data + 5, "/p5_modem", 9) && is_http_whitespace(data[14]))
+			limit = 16;
+		else if (!strncmp(data + 5, "/p5_boot", 8) && is_http_whitespace(data[13]))
+			limit = 64;
+		else
+			return 1; /* Preserve normal upload and file handling. */
+		if (length >= sizeof(hs->p5_request))
+			return -1;
+		body = strstr(data, "\r\n\r\n");
+		if (body) {
+			/* Parse before narrowing to upload_total; legacy parsing can wrap. */
+			number = strstr(data, "\r\nContent-Length:");
+			if (!number || number >= body)
+				return -1;
+			number += sizeof("\r\nContent-Length:") - 1;
+			while (*number == ' ' || *number == '\t')
+				number++;
+			if (!is_digit(*number))
+				return -1;
+			for (bytes = 0; is_digit(*number); number++) {
+				bytes = bytes * 10 + *number - '0';
+				if (bytes > limit)
+					return -1;
+			}
+			if (!bytes || strncmp(number, "\r\n", 2))
+				return -1;
+			body += 4;
+			if (length - (body - data) > bytes)
+				return -1;
+			if (length - (body - data) == bytes)
+				return 1;
+		}
+	}
+	if (length >= sizeof(hs->p5_request))
+		return -1;
+	memcpy(hs->p5_request, data, length);
+	hs->p5_request_len = length;
+	return 0;
+}
+#endif
+
 static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err) {
 	struct failsafe_httpd_state *hs = (struct failsafe_httpd_state *)arg;
 	char *data;
@@ -1547,28 +1818,53 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 
 	hs->last_activity = (u32_t)get_timer(0);
 
-	data = malloc(p->tot_len + 1);
+	offset = 0;
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	if (hs->state == STATE_NONE)
+		offset = hs->p5_request_len;
+#endif
+	data = malloc(offset + p->tot_len + 1);
 	if (!data) {
 		pbuf_free(p);
 		httpd_conn_abort(hs, pcb);
 		return ERR_ABRT;
 	}
-	offset = 0;
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	if (offset)
+		memcpy(data, hs->p5_request, offset);
+	hs->p5_request_len = 0;
+#endif
 	for (q = p; q; q = q->next) {
 		memcpy(data + offset, q->payload, q->len);
 		offset += q->len;
 	}
-	data_len = p->tot_len;
+	data_len = offset;
 	data[data_len] = '\0';
 	need_free = 1;
 
 	switch (hs->state) {
 	case STATE_NONE:
+#ifdef CONFIG_IPQ5018_CUDY_P5
+		offset = httpd_p5_request_complete(hs, data, data_len);
+		if (offset < 0)
+			return httpd_recv_abort(hs, pcb, data, need_free, p);
+		if (!offset)
+			break;
+#endif
 		if (strncmp(data, "GET", 3) == 0 && is_http_method_separator(data[3])) {
 			if (strncmp(&data[4], "/webterm", 8) == 0) {
 				webterm_http_handler(hs, data, data_len);
 				break;
 			}
+#ifdef CONFIG_IPQ5018_CUDY_P5
+			if (strncmp(&data[4], "/p5_storage_status", 18) == 0 && is_http_whitespace(data[22])) {
+				httpd_handle_p5_storage_status(hs); break;
+			}
+			if (strncmp(&data[4], "/ram_status", 11) == 0 && (is_http_whitespace(data[15]) || data[15] == '?')) {
+				httpd_handle_ram_status(hs);
+				break;
+			}
+#endif
 			if (strncmp(&data[4], "/upgrade_status", 15) == 0) {
 				httpd_handle_upgrade_status(hs);
 				break;
@@ -1600,6 +1896,24 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 			}
 			httpd_handle_file_request(hs, data, data_len);
 		} else if (strncmp(data, "POST", 4) == 0 && is_http_method_separator(data[4])) {
+#ifdef CONFIG_IPQ5018_CUDY_P5
+			data[data_len] = '\0';
+			if (!strncmp(data + 5, "/p5_modem", 9) && is_http_whitespace(data[14])) {
+				httpd_handle_p5_modem(hs, data, data_len); break;
+			}
+			if (strncmp(&data[5], "/p5_storage", 11) == 0 && is_http_whitespace(data[16])) {
+				httpd_handle_p5_storage(hs, data, data_len); break;
+			}
+			if (strncmp(&data[5], "/p5_boot", 8) == 0 && is_http_whitespace(data[13])) {
+				httpd_handle_p5_boot(hs, data, data_len);
+				break;
+			}
+			if (p5_boot_pending || p5_action_pending) {
+				static const char busy[] = "HTTP/1.0 409 Conflict\r\nConnection: close\r\n\r\nBoot action pending";
+				httpd_send_static(hs, busy, sizeof(busy) - 1);
+				break;
+			}
+#endif
 			if (strncmp(&data[5], "/webterm", 8) == 0) {
 				webterm_http_handler(hs, data, data_len);
 				break;
@@ -1612,6 +1926,9 @@ static err_t httpd_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t er
 				httpd_handle_mac_set(hs, data, data_len);
 				break;
 			}
+#ifdef CONFIG_IPQ5018_CUDY_P5
+			p5_ram_size = 0;
+#endif
 			data[data_len] = '\0';
 			if (httpd_parse_content_length(hs, data) < 0)
 				return httpd_recv_abort(hs, pcb, data, need_free, p);
@@ -1808,8 +2125,50 @@ void failsafe_httpd_poll(void) {
 	if (!webfailsafe_is_running)
 		return;
 
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	if (p5_action_pending == 1 && (long)(now - p5_action_deadline) >= 0) {
+		/* Run NAND work from the poll loop, never a TCP receive callback. */
+		p5_action_pending = 2;
+		printf("P5 storage action %u: %s\n", p5_action_sequence, p5_action);
+		p5_action_result = p5_storage_execute(p5_action, p5_ram_size, p5_ram_crc);
+		p5_ram_size = 0;
+		p5_action_pending = 0;
+		printf("P5 storage action %u finished: %d; no automatic reboot\n", p5_action_sequence, p5_action_result);
+		return;
+	}
+	if (p5_boot_pending && (long)(now - p5_boot_deadline) >= 0) {
+		int kind = p5_boot_pending;
+		ulong bytes = p5_boot_size;
+		p5_boot_pending = 0;
+		if (kind != P5_BOOT_INSTALLED &&
+		    (p5_ram_size != bytes || p5_ram_crc != p5_boot_crc ||
+		     crc32(0, (const unsigned char *)WEBFAILSAFE_UPLOAD_RAM_ADDRESS, bytes) != p5_boot_crc)) {
+			puts("P5 boot cancelled: upload changed\n");
+			return;
+		}
+		HttpdStop();
+		puts("P5 boot requested; watch UART\n");
+		p5_boot_run(kind, WEBFAILSAFE_UPLOAD_RAM_ADDRESS, bytes);
+		puts("P5 boot returned or failed; returning to web recovery\n");
+		if (!webfailsafe_is_running)
+			run_command("httpd 192.168.1.1", 0);
+		return;
+	}
+#endif
 	if (webfailsafe_ready_for_upgrade) {
 		webfailsafe_ready_for_upgrade = 0;
+#ifdef CONFIG_IPQ5018_CUDY_P5
+		if (webfailsafe_upgrade_type == P5_UPLOAD_RAM_ONLY) {
+			if (!upload.failed && net_boot_file_size > 0 &&
+			    net_boot_file_size <= httpd_transfer_capacity()) {
+				p5_ram_size = net_boot_file_size;
+				p5_ram_crc = crc32(0, (const unsigned char *)WEBFAILSAFE_UPLOAD_RAM_ADDRESS, p5_ram_size);
+				puts("P5 upload complete in RAM. Waiting for a separate boot or flash action.\n");
+			}
+			upgrade_status = 0;
+			return;
+		}
+#endif
 		upgrade_status = 1;
 		setenv_hex("filesize", net_boot_file_size);
 		setenv_hex("filesize_128k", (net_boot_file_size/131072+(net_boot_file_size%131072!=0))*131072);

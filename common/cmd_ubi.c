@@ -538,6 +538,14 @@ static int do_ubi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	if (argc < 2)
 		return CMD_RET_USAGE;
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	if (strncmp(argv[1], "create", 6) == 0 ||
+	    strncmp(argv[1], "remove", 6) == 0 ||
+	    strncmp(argv[1], "write", 5) == 0) {
+		puts("P5 RAM TEST: UBI writes blocked\n");
+		return CMD_RET_FAILURE;
+	}
+#endif
 
 #ifdef CONFIG_QSPI_LAYOUT_SWITCH
 	if (strcmp(argv[1], "exit") == 0)  {

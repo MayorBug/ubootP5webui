@@ -144,6 +144,7 @@ void led_init_by_name(const char *gpio_name);
 void led_init(void);
 void btn_init_by_name(const char *gpio_name);
 void btn_init(void);
+bool btn_pressed(char *name, int name_len);
 void btn_check_press(void);
 int fdt_find_gpio_node(const char *gpio_name);
 int fdt_get_gpio_number(const char *gpio_name);

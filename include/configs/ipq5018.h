@@ -96,7 +96,12 @@
 #define GPIO_IN_OUT_ADDR(x)			(TLMM_BASE + 0x4 + (x)*0x1000)
 
 #define CONFIG_SYS_SDRAM_BASE			0x40000000
-#define CONFIG_SYS_TEXT_BASE			0x4A920000
+#ifdef CONFIG_IPQ5018_CUDY_P5_RAMTEST
+/* Provisional RAM window; verify stock bdinfo before chainloading. */
+#define CONFIG_SYS_TEXT_BASE                     0x46000000
+#else
+#define CONFIG_SYS_TEXT_BASE                     0x4A920000
+#endif
 #define CONFIG_SYS_SDRAM_SIZE			0x10000000
 #define CONFIG_MAX_RAM_BANK_SIZE		CONFIG_SYS_SDRAM_SIZE
 #define CONFIG_SYS_LOAD_ADDR			(CONFIG_SYS_SDRAM_BASE + (64 << 20))
@@ -170,7 +175,9 @@ extern loff_t board_env_size;
 #define qspi_debug(fmt,args...)
 #endif /* QSPI DEBUG */
 #define CONFIG_PAGE_SCOPE_MULTI_PAGE_READ
+#ifndef CONFIG_IPQ5018_CUDY_P5
 #define CONFIG_QSPI_SERIAL_TRAINING
+#endif
 #define CONFIG_QSPI_LAYOUT_SWITCH
 #endif
 
@@ -243,7 +250,9 @@ extern loff_t board_env_size;
 #define CONFIG_SERVERIP				192.168.1.2
 #define CONFIG_CMD_TFTPPUT
 #define CONFIG_IPQ_MDIO				1
+#ifndef CONFIG_IPQ5018_CUDY_P5
 #define CONFIG_IPQ_ETH_INIT_DEFER
+#endif
 #define CONFIG_IPQ_NO_MACS			2
 #define CONFIG_LWIP_HTTPD
 #define CONFIG_DHCPD
@@ -403,9 +412,12 @@ extern loff_t board_env_size;
 /*
  * UBI write command
  */
-#ifdef CONFIG_UBI_WRITE
+#if defined(CONFIG_UBI_WRITE) || defined(CONFIG_IPQ5018_CUDY_P5)
+/* bootipq needs UBI attach/read even in the no-write RAM target. */
 #define CONFIG_CMD_UBI
 #define CONFIG_RBTREE
+#endif
+#ifdef CONFIG_UBI_WRITE
 #define IPQ_UBI_VOL_WRITE_SUPPORT
 #endif
 

@@ -8,6 +8,9 @@
 /* #define	DEBUG	*/
 
 #include <common.h>
+#ifdef CONFIG_IPQ5018_CUDY_P5
+#include <p5_recovery.h>
+#endif
 #include <autoboot.h>
 #include <cli.h>
 #include <console.h>
@@ -80,6 +83,13 @@ void main_loop(void)
 #endif
 
 	cli_init();
+#ifdef CONFIG_IPQ5018_CUDY_P5_RAMTEST
+	puts("P5 RAM recovery: no autoboot; explicit installation, conversion, restore and saveenv are enabled\n");
+	puts("Single-rootfs target: layout unchanged during RAM test\n");
+	p5_network_start();
+	cli_loop();
+	return;
+#endif
 
 #ifndef CONFIG_REDUCE_FOOTPRINT
 	run_preboot_environment_command();
@@ -89,7 +99,7 @@ void main_loop(void)
 	update_tftp(0UL, NULL, NULL);
 #endif /* CONFIG_UPDATE_TFTP */
 
-#ifdef CONFIG_LWIP_HTTPD
+#if defined(CONFIG_LWIP_HTTPD) && !defined(CONFIG_IPQ5018_CUDY_P5)
 	btn_check_press();
 #endif
 #ifdef CONFIG_BOARD_DISPLAY_NAME

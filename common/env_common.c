@@ -207,7 +207,9 @@ int env_import(const char *buf, int check)
 
 		if (crc32(0, ep->data, ENV_SIZE) != crc) {
 			set_default_env("!bad CRC");
+			#ifndef CONFIG_IPQ5018_CUDY_P5
 			saveenv();
+			#endif
 			return 0;
 		}
 	}
@@ -217,7 +219,9 @@ int env_import(const char *buf, int check)
 	if (ret) {
 		error("Failed to decrypt env!\n");
 		set_default_env("!import failed");
+		#ifndef CONFIG_IPQ5018_CUDY_P5
 		saveenv();
+		#endif
 		return ret;
 	}
 

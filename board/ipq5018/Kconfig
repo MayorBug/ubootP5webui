@@ -126,6 +126,29 @@ config IPQ5018_CMCC_RAX3000Q
 	help
 		Enable support for ipq5018 cmcc rax3000q support
 
+config IPQ5018_CUDY_P5
+	bool "Cudy P5 board support"
+	select 256MB_RAM
+	help
+	  P5 GPIO ordering, factory MAC addresses and recovery controls.
+	  Explicit checked recovery and standard UART NAND/environment commands.
+
+config P5_EXPERIMENTAL_STORAGE_WRITES
+	bool "Experimental P5 layout conversion and partition restore"
+	depends on IPQ5018_CUDY_P5
+	default n
+	help
+	  Enable the experimental, explicit UART MIBIB conversion and chunked
+	  ECC partition restore commands. Requires hashes and scoped readback.
+	  P5 recovery builds enable these explicit checked operations. Raw OOB
+	  replay is unsupported.
+
+config IPQ5018_CUDY_P5_RAMTEST
+	bool "Cudy P5 RAM recovery"
+	select IPQ5018_CUDY_P5
+	help
+	  Experimental chainloaded networking test. Never install on flash.
+
 config IPQ5018_XIAOMI_CR880X
 	bool "For ipq5018 xiaomi cr880x / redmi ax3000 support"
 	select 256MB_RAM

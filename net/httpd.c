@@ -135,6 +135,10 @@ static const char *fw_type_to_string(int fw_type) {
 }
 
 int do_http_upgrade(const ulong size, const int upgrade_type) {
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	puts("P5 RAM TEST: upload received; installation and RAM execution blocked\n");
+	return -1;
+#endif
 	printChecksumMd5(UPLOAD_ADDR, size);
 	do_http_progress(WEBFAILSAFE_PROGRESS_UPGRADING);
 	switch (upgrade_type) {

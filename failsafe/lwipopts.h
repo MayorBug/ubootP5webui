@@ -44,7 +44,12 @@
 #define TCP_OOSEQ_MAX_BYTES               0
 #define MEMP_NUM_TCP_SEG                  512
 #define MEMP_NUM_TCP_PCB_LISTEN           2
+#ifdef CONFIG_IPQ5018_CUDY_P5
+/* Allow browser asset requests alongside terminal polling and closing sockets. */
+#define MEMP_NUM_TCP_PCB                  12
+#else
 #define MEMP_NUM_TCP_PCB                  4
+#endif
 #define MEMP_NUM_REASSDATA                0
 #define MEMP_NUM_ARP_QUEUE                8
 
@@ -52,6 +57,11 @@
 #define TCP_OVERSIZE                      TCP_MSS
 
 #define MEM_SIZE                          (512 * 1024)
+#if defined(CONFIG_IPQ5018_CUDY_P5) && !defined(CONFIG_IPQ5018_CUDY_P5_RAMTEST)
+/* Keep flash-target BSS and TLB inside the stock 0x4a800000..0x4aa00000 region.
+ * This boot-only network heap is disjoint from the RAM chain loader and uploads. */
+#define LWIP_RAM_HEAP_POINTER ((void *)0x48020000UL)
+#endif
 #define MEM_ALIGNMENT                     4
 #define MEMP_OVERFLOW_CHECK               0
 #define MEMP_SANITY_CHECK                 0

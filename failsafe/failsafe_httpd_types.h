@@ -17,6 +17,10 @@ struct failsafe_httpd_state {
 	u32_t upload;
 	u32_t upload_total;
 	u8_t owns_global;
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	u16_t p5_request_len;
+	char p5_request[2048];
+#endif
 	struct tcp_pcb *pcb;
 };
 

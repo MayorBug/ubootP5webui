@@ -23,6 +23,10 @@
 #include <mmc.h>
 #include <sdhci.h>
 #include <config.h>
+#ifdef CONFIG_IPQ5018_CUDY_P5
+#include <dt-bindings/qcom/gpio-ipq5018.h>
+#include <p5_modem.h>
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 #ifdef CONFIG_ENV_IS_IN_NAND
@@ -450,6 +454,23 @@ int is_atf_enabled(void)
  */
 int board_early_init_f(void)
 {
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	struct qca_gpio_config power = {
+		.gpio = 35, .func = 0, .out = GPIO_OUT_HIGH,
+		.pull = GPIO_NO_PULL, .drvstr = GPIO_2MA,
+		.oe = GPIO_OE_ENABLE,
+	};
+	struct qca_gpio_config reset = {
+		.gpio = 30, .func = 0, .out = GPIO_OUT_LOW,
+		.pull = GPIO_NO_PULL, .drvstr = GPIO_2MA,
+		.oe = GPIO_OE_ENABLE,
+	};
+
+	gpio_set_value(35, 1);
+	gpio_tlmm_config(&power);
+	gpio_set_value(30, 0);
+	gpio_tlmm_config(&reset);
+#endif
 	return 0;
 }
 
@@ -517,6 +538,10 @@ int board_late_init(void)
 		get_kernel_fs_part_details();
 	}
 
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	/* Environment is loaded here; early init always keeps the modem off. */
+	p5_modem_apply_boot();
+#endif
 	/* get machine type from SMEM and set in env */
 	machid = gd->bd->bi_arch_number;
 	printf("machid: %x\n", machid);

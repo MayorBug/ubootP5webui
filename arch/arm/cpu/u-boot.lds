@@ -11,7 +11,11 @@
 
 OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")
 OUTPUT_ARCH(arm)
+#ifdef CONFIG_IPQ5018_CUDY_P5_RAMTEST
+ENTRY(p5_ramtest_entry)
+#else
 ENTRY(_start)
+#endif
 SECTIONS
 {
 	/*
@@ -37,6 +41,10 @@ SECTIONS
 	.text :
 	{
 		*(.__image_copy_start)
+#ifdef CONFIG_IPQ5018_CUDY_P5_RAMTEST
+		KEEP(*(.p5_ramtest_entry))
+		. = ALIGN(32);
+#endif
 		*(.vectors)
 		CPUDIR/start.o (.text*)
 		*(.text*)

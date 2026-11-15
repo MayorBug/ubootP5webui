@@ -27,6 +27,11 @@
  */
 
 #include <common.h>
+#ifdef CONFIG_IPQ5018_CUDY_P5
+#include <p5_recovery.h>
+#include <p5_storage.h>
+#endif
+
 #include <malloc.h>
 
 #include <asm/io.h>
@@ -2524,6 +2529,8 @@ qpic_nand_write_page(struct mtd_info *mtd, uint32_t pg_addr,
 					 enum nand_cfg_value cfg_mode,
 					 struct mtd_oob_ops *ops)
 {
+
+
 	struct qpic_nand_dev *dev = MTD_QPIC_NAND_DEV(mtd);
 	struct cfg_params cfg;
 	int nand_ret = NANDC_RESULT_SUCCESS;
@@ -4309,6 +4316,8 @@ static int qpic_nand_write(struct mtd_info *mtd, loff_t to, size_t len,
  */
 nand_result_t qpic_nand_blk_erase(struct mtd_info *mtd, uint32_t page)
 {
+
+
 	struct cfg_params cfg;
 	struct cmd_element *cmd_list_ptr = ce_array;
 	struct cmd_element *cmd_list_read_ptr = ce_read_array;

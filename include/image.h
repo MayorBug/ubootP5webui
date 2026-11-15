@@ -65,7 +65,9 @@ struct lmb;
 # else
 #  define CONFIG_CRC32		/* FIT images need CRC32 support */
 #  define CONFIG_MD5		/* and MD5 */
-#  define CONFIG_SHA1		/* and SHA1 */
+#  ifndef CONFIG_SHA1
+#   define CONFIG_SHA1		/* and SHA1 */
+#  endif
 #  define CONFIG_SHA256		/* and SHA256 */
 #  define IMAGE_ENABLE_CRC32	1
 #  define IMAGE_ENABLE_MD5	1

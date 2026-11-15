@@ -20,6 +20,9 @@
 #include <asm/arch-qca-common/gpio.h>
 #include <asm/io.h>
 #include <console.h>
+#ifdef CONFIG_IPQ5018_CUDY_P5
+#include <p5_recovery.h>
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -65,6 +68,10 @@ void led_toggle(const char *gpio_name) {
 		return;
 	}
 	value = gpio_get_value(gpio);
+#ifdef CONFIG_IPQ5018_CUDY_P5
+	if (readl(GPIO_CONFIG_ADDR(gpio)) & (1 << 9))
+		value = !!(readl(GPIO_IN_OUT_ADDR(gpio)) & 2);
+#endif
 	value = !value;
 	gpio_set_value(gpio, value);
 }
@@ -231,7 +238,7 @@ void env_reset_gpio_invalidate(void) {
 	env_reset_gpio_cached = -2;
 }
 
-static bool btn_pressed(char *name, int name_len) {
+bool btn_pressed(char *name, int name_len) {
 	int eg = env_reset_gpio();
 	if (eg >= 0) {
 		if (gpio_debounce(eg, RESET_BUTTON_PRESSED)) {
@@ -239,6 +246,12 @@ static bool btn_pressed(char *name, int name_len) {
 			name[name_len - 1] = '\0';
 			return true;
 		}
+#ifdef CONFIG_IPQ5018_CUDY_P5
+		if (btn_is_pressed("wps", RESET_BUTTON_PRESSED)) {
+			strlcpy(name, "wps", name_len);
+			return true;
+		}
+#endif
 		return false;
 	}
 
@@ -268,8 +281,12 @@ static bool btn_pressed(char *name, int name_len) {
 }
 
 void btn_init(void) {
-	if (env_reset_gpio() >= 0)
+	if (env_reset_gpio() >= 0) {
+#ifdef CONFIG_IPQ5018_CUDY_P5
+		btn_init_by_name("wps");
+#endif
 		return;
+	}
 
 	int key_gpio_node = fdt_path_offset(gd->fdt_blob, "/tlmm-gpio/key_gpio");
 	if (key_gpio_node < 0) {
@@ -303,10 +320,14 @@ void btn_check_press(void) {
 			}
 			led_on("power_led");
 			led_on("blink_led");
+#ifdef CONFIG_IPQ5018_CUDY_P5
+			p5_network_start();
+#else
 #ifndef CONFIG_IPQ40XX
 			eth_initialize();
 #endif
 			run_command("httpd", 0);
+#endif
 			break;
 		}
 	}
@@ -328,6 +349,11 @@ static void fdt_list_gpio_by_node(int node, const char *parent,
 		if (gpio >= 0) {
 			int value = gpio_get_value(gpio);
 			unsigned int cfg = readl(GPIO_CONFIG_ADDR(gpio));
+#ifdef CONFIG_IPQ5018_CUDY_P5
+			/* Input sampling can read low when an output's input buffer is disabled. */
+			if (cfg & (1 << 9))
+				value = !!(readl(GPIO_IN_OUT_ADDR(gpio)) & 2);
+#endif
 			const char *name = fdt_get_name(gd->fdt_blob, subnode, NULL);
 			cb(gpio, name ? name : "?", (cfg & (1 << 9)) ? "out" : "in", value, parent, ctx);
 		}
