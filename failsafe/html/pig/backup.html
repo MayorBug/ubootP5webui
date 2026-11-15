@@ -1,33 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+ <script>
+ (function(){
+  window.addEventListener('error',function(event){
+   var target=event.target;
+   if(!target || (target.tagName!=='SCRIPT' && !(target.tagName==='LINK' && target.rel==='stylesheet')))return;
+   function notice(){
+    if(!document.body || document.getElementById('resource-error'))return;
+    var box=document.createElement('div');box.id='resource-error';box.setAttribute('role','alert');
+    box.style.cssText='position:relative;padding:16px;margin:12px;background:#fff;color:#111;font:16px sans-serif;border:2px solid #b00020;z-index:9999';
+    box.textContent='Page resources did not load. Reload this page. ';
+    var button=document.createElement('button');button.textContent='Reload';button.onclick=function(){location.reload();};
+    box.appendChild(button);document.body.prepend(box);
+   }
+   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',notice,{once:true});else notice();
+  },true);
+ })();
+ </script>
+
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title data-i18n="备份分区">Back up partitions</title>
-	<script src="i18n.js?v=r5"></script>
-	<script src="common.js?v=f"></script>
-	<link rel="stylesheet" href="style.css?v=f">
+	<script src="i18n.js?v=r6"></script>
+	<script src="sha256.js?v=r4"></script>
+	<script src="recovery.js?v=r4"></script>
+	<script src="common.js?v=r4"></script>
+	<link rel="stylesheet" href="style.css?v=r6">
 </head>
 <body class="iframe-content">
-	<div class="card">
-		<h2><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-download"/></svg>备份分区</h2>
-		<p>选择要备份的<b>分区名称</b>或<b>nor_full/nand_full</b>，<br>点击<b>确认</b>按钮保存到本地。</p>
+	<div class="card backup-card">
+		<h2><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-download"/></svg><span data-i18n="备份分区">备份分区</span></h2>
+		<p id="backup-error" role="alert" hidden></p>
 		<div class="backup-row">
 			<div class="backup-col">
-				<label for="part-select" data-i18n="分区名称">分区名称</label>
+				<label for="part-select"><span data-i18n="分区名称">分区名称</span></label>
 				<select id="part-select" ></select>
 			</div>
 			<div class="backup-col">
-				<span class="label" data-i18n="分区信息">分区信息</span>
+				<span class="label"><span data-i18n="分区信息">分区信息</span></span>
 				<div id="size-display" class="size-display"></div>
 			</div>
 		</div>
-		<div class="button-container"><button id="backup-btn" disabled data-i18n="确认">确认</button></div>
+		<p id="manifest-hint" data-i18n="Download the backup first, then save its manifest.">Download the backup first, then save its manifest.</p>
+		<div class="button-container backup-actions">
+			<button id="backup-btn" disabled data-i18n="Download selected partition">Download selected partition</button>
+			<button id="manifest-button" disabled data-i18n="Download manifest">Download manifest</button>
+		</div>
 		<div class="tips">
 			<ul>
-				<li class="backup-tip">rootfs分区可能读取及下载时间较长；</li>
-				<li class="backup-tip">因内存限制，部分分区可能无法完成；</li>
-				<li class="backup-tip">备份过程中请勿操作其他功能、刷新页面或断开连接。</li>
 				<li id="backup-progress" style="display:none;list-style:none"></li>
 			</ul>
 		</div>
@@ -36,7 +57,8 @@
 var sel=document.getElementById('part-select');
 var sizeEl=document.getElementById('size-display');
 var dlBtn=document.getElementById('backup-btn');
-var partsData=[];
+var partsData=[], backupMeta=null, backupAbout=null;
+var lastManifest=null;
 var nandType='none';
 
 function updateSize(){
@@ -50,16 +72,22 @@ function updateSize(){
 	sizeEl.textContent='0x'+p.start.toString(16).toUpperCase()+'-0x'+end.toString(16).toUpperCase()+' ('+formatSize(sz)+')';
 }
 
-sel.onchange=updateSize;
+sel.onchange=function(){lastManifest=null;document.getElementById('manifest-button').disabled=true;document.getElementById('manifest-hint').textContent=uiText('Download the backup first, then save its manifest.');updateSize();};
 
 function loadPartitions(){
 	sel.disabled=true;
 	dlBtn.disabled=true;
 	sel.innerHTML='';
 	sizeEl.textContent='';
-	xhrGet('/partitions',function(data){
-		if(!data.parts||!data.parts.length)return;
-		partsData=data.parts;
+	Promise.all(['/about','/partitions'].map(function(url){
+		return fetch(url,{cache:'no-store'}).then(function(response){if(!response.ok)throw Error();return response.json();});
+	})).then(function(metadata){
+		var data=metadata[1];
+		backupAbout=metadata[0];
+		if(!data || !Array.isArray(data.parts) || !data.parts.length || !backupAbout || !backupAbout.machid || !backupAbout.mac_addr)throw Error();
+		if(backupAbout.model)bkModel=backupAbout.model.replace(/\([^)]*\)/g,'').replace(/[\s\/\\]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+		backupMeta=data;
+		partsData=data.parts.slice();
 		sel.innerHTML='';
 		for(var i=0;i<partsData.length;i++){
 			var opt=document.createElement('option');
@@ -83,25 +111,31 @@ function loadPartitions(){
 		});
 		nandType=data.nand_type||'none';
 		updateSize();
+	}).catch(function(){
+		var error=document.getElementById('backup-error');error.hidden=false;
+		error.textContent=uiText('Could not read backup metadata. Reload the page to retry.');
 	});
 }
 
-sel.onchange=updateSize;
+sel.onchange=function(){lastManifest=null;document.getElementById('manifest-button').disabled=true;document.getElementById('manifest-hint').textContent=uiText('Download the backup first, then save its manifest.');updateSize();};
 
 var restoreTimer=0;
 var bkModel='';
-xhrGet('/about',function(d){if(d&&d.model) bkModel=d.model.replace(/\([^)]*\)/g,'').replace(/[\s\/\\]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');});
 dlBtn.onclick=function(){
 	var idx=sel.selectedIndex;
 	if(idx<0||idx>=partsData.length)return;
 	var p=partsData[idx];
 	if(p.name==='nand_full'&&!p.raw){
-		if(!confirm('不备份OOB可能破坏数据的完整性，建议使用nand_full_OOB模式。是否继续？')) return;
+		if(!confirm(uiText("不备份OOB可能破坏数据的完整性，建议使用nand_full_OOB模式。是否继续？"))) return;
 	}
 	var name=p.name;
 	var raw=!!p.raw;
 	var totalSize=p.size+(p.oob||0);
+	lastManifest=null;
+	document.getElementById('manifest-button').disabled=true;
+	sel.disabled=true;
 	dlBtn.disabled=true;
+	setUiBusy(true);
 	clearTimeout(restoreTimer);
 	var progEl=document.getElementById('backup-progress');
 	var tips=document.querySelectorAll('.backup-tip');
@@ -109,8 +143,8 @@ dlBtn.onclick=function(){
 	progEl.style.display='';
 	var spin='<svg class="icon icon-spin" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-refresh"/></svg>';
 	var startTime=Date.now(),readTime=0;
-	var tickTimer=setInterval(function(){progEl.innerHTML='读取耗时：'+((Date.now()-startTime)/1000).toFixed(0)+'s';},1000);
-	dlBtn.innerHTML='读取中'+spin;
+	var tickTimer=setInterval(function(){progEl.innerHTML=uiText("读取耗时：")+((Date.now()-startTime)/1000).toFixed(0)+'s';},1000);
+	dlBtn.innerHTML=uiText("读取中")+spin;
 	var restoreTips=function(){tips.forEach(function(t){t.style.display='';});progEl.style.display='none';};
 	var xhr=new XMLHttpRequest();
 	xhr.open('GET','/backup?part='+encodeURIComponent(name)+(raw?'&raw=1':'')+'&size='+totalSize,true);
@@ -121,39 +155,60 @@ dlBtn.onclick=function(){
 		if(!readTime){
 			readTime=Date.now();
 			clearInterval(tickTimer);
-			dlBtn.innerHTML='接收中'+spin;
+			dlBtn.innerHTML=uiText("接收中")+spin;
 		}
 		var info=formatSize(e.loaded)+(e.total?' / '+formatSize(e.total)+' ('+Math.round(e.loaded/e.total*100)+'%)':'');
-		progEl.innerHTML='读取耗时：'+((readTime-startTime)/1000).toFixed(1)+'s<br>接收信息：'+info+'，耗时 '+((Date.now()-readTime)/1000).toFixed(0)+'s';
+		progEl.innerHTML=uiText("读取耗时：")+((readTime-startTime)/1000).toFixed(1)+uiText("s<br>接收信息：")+info+uiText("，耗时 ")+((Date.now()-readTime)/1000).toFixed(0)+'s';
 	};
-	var resetBtn=function(){dlBtn.textContent='确认';clearInterval(tickTimer);dlBtn.disabled=false;};
+	var resetBtn=function(){setUiBusy(false);dlBtn.textContent=uiText("Download selected partition");clearInterval(tickTimer);dlBtn.disabled=false;sel.disabled=false;};
 	var onFail=function(msg){resetBtn();progEl.innerHTML=msg;restoreTimer=setTimeout(restoreTips,60000);};
-	xhr.onload=function(){
-		resetBtn();
+	xhr.onload=async function(){
+		clearInterval(tickTimer);
+		try {
 		if(xhr.status===200){
 			var now=Date.now();
 			readTime=readTime||now;
-			progEl.innerHTML='读取耗时：'+((readTime-startTime)/1000).toFixed(1)+'s<br>接收信息：'+formatSize(xhr.response.size||0)+'，耗时 '+((now-readTime)/1000).toFixed(1)+'s<br>接收完成，总耗时 '+((now-startTime)/1000).toFixed(1)+'s。';
+			progEl.innerHTML=uiText("读取耗时：")+((readTime-startTime)/1000).toFixed(1)+uiText("s<br>接收信息：")+formatSize(xhr.response.size||0)+uiText("，耗时 ")+((now-readTime)/1000).toFixed(1)+uiText("s<br>接收完成，总耗时 ")+((now-startTime)/1000).toFixed(1)+'s.';
+			if(xhr.response.size!==totalSize){onFail(uiText('Backup length does not match the requested size.'));return;}
+			setUiBusy(true);
+			dlBtn.textContent=uiText('Calculating checksum…');
+			var digest;
+			try { digest=sha256(await xhr.response.arrayBuffer()); }
+			catch(e){setUiBusy(false);onFail(uiText('Could not calculate the backup checksum.'));return;}
 			var blob=new Blob([xhr.response]);
 			var url=URL.createObjectURL(blob);
 			var a=document.createElement('a');
 			a.href=url;
 			var d=new Date(),pad=function(n){return n<10?'0'+n:n;};
 			a.download=name+(raw?'_oob':'')+(bkModel?'_'+bkModel:'')+'_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds())+'.bin';
+			lastManifest={schema:'p5-partition-backup-v1', board:'cudy,p5', machid:backupAbout&&backupAbout.machid, device_mac:backupAbout&&backupAbout.mac_addr, layout:typeof P5Plan!=='undefined'?P5Plan.inspect(backupAbout,backupMeta).layout:'unknown', partition:name, start:p.start, partition_size:p.size, bytes:xhr.response.size, sha256:digest, format:raw?'nand-raw-oob':p.full?'nand-full-data':'nand-ecc-data', filename:a.download, restore_tested:false, bad_block_policy:'reader-defined; restore mapping not yet validated'};
+			document.getElementById('manifest-button').disabled=false;
+			document.getElementById('manifest-hint').textContent=uiText('Manifest ready for:')+' '+name;
 			document.body.appendChild(a);
 			a.click();
 			document.body.removeChild(a);
 			URL.revokeObjectURL(url);
+			resetBtn();
 		} else {
-			progEl.innerHTML='下载失败。';
+			resetBtn();
+			progEl.innerHTML=uiText("下载失败。");
 		}
 		restoreTimer=setTimeout(restoreTips,60000);
+		} catch(e) {
+			lastManifest=null;document.getElementById('manifest-button').disabled=true;
+			progEl.textContent=uiText('Backup processing failed. Reload the page and retry.')+' '+e.message;
+		} finally { resetBtn(); }
 	};
-	xhr.ontimeout=function(){onFail('下载超时。');};
-	xhr.onerror=function(){onFail('下载出错。');};
+	xhr.ontimeout=function(){onFail(uiText("下载超时。"));};
+	xhr.onerror=function(){onFail(uiText("下载出错。"));};
 	xhr.send();
 };
 
+document.getElementById('manifest-button').onclick=function(){
+ if(!lastManifest)return;
+ var a=document.createElement('a'),url=URL.createObjectURL(new Blob([JSON.stringify(lastManifest,null,2)],{type:'application/json'}));
+ a.href=url;a.download=lastManifest.filename+'.json';a.click();setTimeout(function(){URL.revokeObjectURL(url);},1000);
+};
 loadPartitions();
 	</script>
 </body>

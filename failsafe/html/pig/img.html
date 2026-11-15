@@ -1,45 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+ <script>
+ (function(){
+  window.addEventListener('error',function(event){
+   var target=event.target;
+   if(!target || (target.tagName!=='SCRIPT' && !(target.tagName==='LINK' && target.rel==='stylesheet')))return;
+   function notice(){
+    if(!document.body || document.getElementById('resource-error'))return;
+    var box=document.createElement('div');box.id='resource-error';box.setAttribute('role','alert');
+    box.style.cssText='position:relative;padding:16px;margin:12px;background:#fff;color:#111;font:16px sans-serif;border:2px solid #b00020;z-index:9999';
+    box.textContent='Page resources did not load. Reload this page. ';
+    var button=document.createElement('button');button.textContent='Reload';button.onclick=function(){location.reload();};
+    box.appendChild(button);document.body.prepend(box);
+   }
+   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',notice,{once:true});else notice();
+  },true);
+ })();
+ </script>
+
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title data-i18n="编程模式">Full flash programming</title>
-	<script src="i18n.js?v=r5"></script>
-	<script src="common.js?v=f"></script>
-	<link rel="stylesheet" href="style.css?v=f">
+	<script src="i18n.js?v=r6"></script>
+	<script src="common.js?v=r4"></script>
+	<link rel="stylesheet" href="style.css?v=r6">
 </head>
 <body class="iframe-content">
 	<div class="card">
-		<h2><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-cpu"/></svg>编程模式</h2>
-		<p>将进入<b>编程模式</b>对闪存进行全量编程刷写。<br>请选择<b>目标闪存</b>和<b>IMG文件</b>，然后点击<b>确认</b>按钮。</p>
+		<h2><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-cpu"/></svg><span data-i18n="编程模式">编程模式</span></h2>
+		<p data-i18n="将进入&lt;b&gt;编程模式&lt;/b&gt;对闪存进行全量编程刷写。&lt;br&gt;请选择&lt;b&gt;目标闪存&lt;/b&gt;和&lt;b&gt;IMG文件&lt;/b&gt;，然后点击&lt;b&gt;确认&lt;/b&gt;按钮。">将进入<b>编程模式</b>对闪存进行全量编程刷写。<br>请选择<b>目标闪存</b>和<b>IMG文件</b>，然后点击<b>确认</b>按钮。</p>
 		<form enctype="multipart/form-data" name="img" id="img-form">
 			<div class="backup-row">
 				<div class="backup-col">
-					<label for="flash-select" data-i18n="目标闪存">目标闪存</label>
+					<label for="flash-select"><span data-i18n="目标闪存">目标闪存</span></label>
 					<select id="flash-select" disabled></select>
 				</div>
 				<div class="backup-col">
-					<span class="label" data-i18n="闪存容量">闪存容量</span>
+					<span class="label"><span data-i18n="闪存容量">闪存容量</span></span>
 					<div id="size-display" class="size-display"></div>
 				</div>
 			</div>
 			<div class="form-group">
 				<input type="hidden" name="img_flash" id="img-flash" value="img_nor">
-			<label for="img-file">请选择<b>IMG文件</b></label>
+			<label for="img-file"><span data-i18n="请选择">请选择</span><b><span data-i18n="IMG文件">IMG文件</span></b></label>
 			<input type="file" name="img" id="img-file" accept=".img,.IMG,.bin,.BIN" required>
 		</div>
-			<div class="button-container"><button type="submit" id="submit-btn" disabled data-i18n="确认">确认</button></div>
+			<div class="button-container"><button type="submit" id="submit-btn" disabled><span data-i18n="确认">确认</span></button></div>
 		</form>
 		<div class="tips tips-danger">
 			<ul>
-				<li class="file-tip">请确认所选的IMG文件是正确的；</li>
-				<li class="file-tip">编程模式<span style="color:red">非常危险</span>，可能会损坏设备；</li>
-				<li class="file-tip" id="img-reboot-tip">更新完成后将自动重启。</li>
+				<li class="file-tip"><span data-i18n="请确认所选的IMG文件是正确的；">请确认所选的IMG文件是正确的；</span></li>
+				<li class="file-tip" data-i18n="编程模式&lt;span style=&quot;color:red&quot;&gt;非常危险&lt;/span&gt;，可能会损坏设备；">编程模式<span style="color:red">非常危险</span>，可能会损坏设备；</li>
+				<li class="file-tip" id="img-reboot-tip" data-i18n="更新完成后将自动重启。">更新完成后将自动重启。</li>
 				<li id="sha256-display" style="display:none;list-style:none"></li>
 			</ul>
 		</div>
 	</div>
-	<script src="submit.js?v=f"></script>
+	<script src="sha256.js?v=r4"></script>
+	<script src="submit.js?v=r4"></script>
 	<script>
 	(function() {
 		window.bkType='IMG';
@@ -54,7 +73,8 @@
 			try { autoReboot = localStorage.getItem('auto_reboot') !== '0'; } catch (e) {}
 			var tipEl = document.getElementById('img-reboot-tip');
 			if (tipEl) {
-				tipEl.innerHTML = autoReboot ? '更新完成后将自动重启。' : '按需自动或手动重启。';
+				tipEl.removeAttribute('data-i18n');
+				tipEl.innerHTML = autoReboot ? uiText("更新完成后将自动重启。") : uiText("按需自动或手动重启。");
 			}
 		}
 
@@ -91,7 +111,7 @@
 		submitBtn.addEventListener('click', function(e) {
 			var selVal = document.getElementById('img-flash').value;
 			if (selVal === 'img_nand') {
-				if (!confirm('无OOB的数据编程可能导致ECC错误，建议选择NAND_OOB模式并选择带OOB数据的文件。是否继续？')) { e.preventDefault(); e.stopPropagation(); }
+				if (!confirm(uiText("无OOB的数据编程可能导致ECC错误，建议选择NAND_OOB模式并选择带OOB数据的文件。是否继续？"))) { e.preventDefault(); e.stopPropagation(); }
 			}
 		});
 

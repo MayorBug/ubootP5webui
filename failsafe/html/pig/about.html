@@ -1,25 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+ <script>
+ (function(){
+  window.addEventListener('error',function(event){
+   var target=event.target;
+   if(!target || (target.tagName!=='SCRIPT' && !(target.tagName==='LINK' && target.rel==='stylesheet')))return;
+   function notice(){
+    if(!document.body || document.getElementById('resource-error'))return;
+    var box=document.createElement('div');box.id='resource-error';box.setAttribute('role','alert');
+    box.style.cssText='position:relative;padding:16px;margin:12px;background:#fff;color:#111;font:16px sans-serif;border:2px solid #b00020;z-index:9999';
+    box.textContent='Page resources did not load. Reload this page. ';
+    var button=document.createElement('button');button.textContent='Reload';button.onclick=function(){location.reload();};
+    box.appendChild(button);document.body.prepend(box);
+   }
+   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',notice,{once:true});else notice();
+  },true);
+ })();
+ </script>
+
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title data-i18n="关于设置">Device settings</title>
-	<script src="i18n.js?v=r5"></script>
-	<script src="common.js?v=f"></script>
-	<link rel="stylesheet" href="style.css?v=f">
+	<title>Device information</title>
+	<script src="i18n.js?v=r6"></script>
+	<script src="common.js?v=r4"></script>
+	<link rel="stylesheet" href="style.css?v=r6">
 </head>
 <body class="iframe-content">
 	<script>if(window.self!==window.top)document.body.classList.add('in-frame')</script>
 	<div class="card about-card">
-		<h2 class="has-tabs"><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-router"/></svg><span id="about-title" data-i18n="关于设置">关于设置</span><span class="tab-indicator" id="tab-indicator"></span></h2>
+		<h2 class="has-tabs"><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-router"/></svg><span id="about-title"><span data-i18n="关于设置">关于设置</span></span><span class="tab-indicator" id="tab-indicator"></span></h2>
 
 		<!-- 标签页导航 -->
 		<div class="tab-nav">
-			<div class="tab-item active" data-tab="info">设备信息</div>
-			<div class="tab-item" data-tab="gpio">GPIO信息</div>
-			<div class="tab-item" data-tab="smem">SMEM信息</div>
-			<div class="tab-item" data-tab="mac">MAC管理</div>
-			<div class="tab-item" data-tab="updset">更新设置</div>
+			<div class="tab-item active" data-tab="info"><span data-i18n="设备信息">设备信息</span></div>
+			<div class="tab-item" data-tab="gpio"><span data-i18n="GPIO信息">GPIO信息</span></div>
+			<div class="tab-item" data-tab="smem"><span data-i18n="SMEM信息">SMEM信息</span></div>
+			<div class="tab-item" data-tab="mac"><span data-i18n="MAC管理">MAC管理</span></div>
 		</div>
 
 		<div class="tab-container">
@@ -36,9 +53,10 @@
 			<div class="tab-content" id="tab-gpio">
 				<div class="about-section">
 					<table class="about-table" id="gpio-table">
-						<thead><tr><th data-i18n="名称">名称</th><th data-i18n="映射">映射</th><th>GPIO</th><th data-i18n="方向">方向</th><th data-i18n="当前值">当前值</th><th data-i18n="电平">电平</th><th data-i18n="父系">父系</th><th data-i18n="来源">来源</th><th data-i18n="覆盖">覆盖</th><th><span class="about-gpio-ops">操作 <button class="about-sm-btn" id="gpio-detect-btn" data-i18n="探测按键">探测按键</button></span></th></tr></thead>
+						<thead><tr><th><span data-i18n="名称">名称</span></th><th><span data-i18n="映射">映射</span></th><th>GPIO</th><th><span data-i18n="方向">方向</span></th><th><span data-i18n="当前值">当前值</span></th><th><span data-i18n="电平">电平</span></th><th><span data-i18n="父系">父系</span></th><th><span data-i18n="来源">来源</span></th><th><span data-i18n="覆盖">覆盖</span></th><th><span class="about-gpio-ops"><span data-i18n="操作">操作</span> <button class="about-sm-btn" id="gpio-detect-btn"><span data-i18n="探测按键">探测按键</span></button></span></th></tr></thead>
 						<tbody id="gpio-tbody"></tbody>
 					</table>
+					<p id="gpio-error" role="alert" hidden></p>
 				</div>
 			</div>
 
@@ -46,7 +64,7 @@
 			<div class="tab-content" id="tab-smem">
 				<div class="about-section">
 					<table class="about-table" id="smem-table">
-						<thead id="smem-thead"><tr><th rowspan="2" data-i18n="名称">名称</th><th colspan="2" data-i18n="起始">起始</th><th colspan="2" data-i18n="结束">结束</th><th colspan="3" data-i18n="大小">大小</th><th rowspan="2" data-i18n="指向">指向</th></tr><tr><th data-i18n="块">块</th><th data-i18n="地址">地址</th><th data-i18n="块">块</th><th data-i18n="地址">地址</th><th data-i18n="块数">块数</th><th>Hex</th><th data-i18n="容量">容量</th></tr></thead>
+						<thead id="smem-thead"><tr><th rowspan="2"><span data-i18n="名称">名称</span></th><th colspan="2"><span data-i18n="起始">起始</span></th><th colspan="2"><span data-i18n="结束">结束</span></th><th colspan="3"><span data-i18n="大小">大小</span></th><th rowspan="2"><span data-i18n="指向">指向</span></th></tr><tr><th><span data-i18n="块">块</span></th><th><span data-i18n="地址">地址</span></th><th><span data-i18n="块">块</span></th><th><span data-i18n="地址">地址</span></th><th><span data-i18n="块数">块数</span></th><th>Hex</th><th><span data-i18n="容量">容量</span></th></tr></thead>
 						<tbody id="smem-tbody"></tbody>
 					</table>
 				</div>
@@ -55,21 +73,16 @@
 			<!-- 第4页：MAC管理 -->
 			<div class="tab-content" id="tab-mac">
 				<div class="about-section">
+					<p id="mac-source"></p>
+					<p data-i18n="Calibration MACs can differ from active Wi-Fi MACs. Pass means the checksum is valid.">Calibration MACs can differ from active Wi-Fi MACs. Pass means the checksum is valid.</p>
 					<table class="about-table" id="mac-table">
-						<thead><tr><th data-i18n="接口">接口</th><th data-i18n="MAC地址">MAC地址</th><th data-i18n="ART偏移">ART偏移</th><th data-i18n="校验偏移">校验偏移</th><th data-i18n="XOR16值">XOR16值</th><th data-i18n="校验状态">校验状态</th><th data-i18n="操作">操作</th></tr></thead>
+						<thead><tr><th><span data-i18n="接口">接口</span></th><th><span data-i18n="MAC地址">MAC地址</span></th><th><span data-i18n="ART偏移">ART偏移</span></th><th><span data-i18n="校验偏移">校验偏移</span></th><th><span data-i18n="XOR16值">XOR16值</span></th><th><span data-i18n="校验状态">校验状态</span></th><th><span data-i18n="操作">操作</span></th></tr></thead>
 						<tbody id="mac-tbody"></tbody>
 					</table>
 				</div>
 			</div>
 
-			<!-- 第5页：更新设置 -->
-			<div class="tab-content" id="tab-updset">
-				<div class="about-section">
-					<table class="about-table" id="updset-table">
-						<tbody id="updset-tbody"></tbody>
-					</table>
-				</div>
-			</div>
+
 		</div>
 	</div>
 
@@ -115,6 +128,45 @@
 		return b;
 	}
 
+	function gpioRequest(url, options, parent, done) {
+		var controls = document.querySelectorAll('#gpio-tbody button, #gpio-tbody input');
+		controls.forEach(function(c) { c.disabled = true; });
+		var error = document.getElementById('gpio-error');
+		error.hidden = true;
+		fetch(url, options).then(function(r) {
+			if (!r.ok) throw Error();
+			return r.text();
+		}).then(function(reply) {
+			if (reply.trim() !== 'ok') throw Error();
+			done();
+		}).catch(function() {
+			error.textContent = uiText('Action failed. Reload to check the current state before trying again.');
+			error.hidden = false;
+		}).then(function() { controls.forEach(function(c) { c.disabled = false; }); });
+	}
+
+	function addToggle(parent, label, on, change, enabledText) {
+		var wrap = document.createElement('label');
+		wrap.className = 'gpio-toggle';
+		var input = document.createElement('input');
+		input.type = 'checkbox'; input.setAttribute('role', 'switch'); input.checked = on;
+		input.setAttribute('aria-label', label);
+		var track = document.createElement('span'); track.className = 'gpio-toggle-track'; track.setAttribute('aria-hidden', 'true');
+		var text = document.createElement('span');
+		function render() { text.textContent = label + ': ' + uiText(input.checked ? (enabledText || 'On') : 'Off'); }
+		render();
+		input.onchange = function() {
+			var next = input.checked; input.checked = !next;
+			change(next, function() { input.checked = next; render(); });
+		};
+		wrap.appendChild(input); wrap.appendChild(track); wrap.appendChild(text); parent.appendChild(wrap);
+	}
+
+	function modemAction(action, parent, done) {
+		if ((action === 'power-off' || action === 'reset') && !confirm(uiText('This interrupts the modem connection. Continue?'))) return;
+		gpioRequest('/p5_modem', {method:'POST', headers:{'X-P5-Recovery':'1'}, body:action}, parent, done);
+	}
+
 	function bindLedButtons(gpioTbody) {
 		gpioTbody.querySelectorAll('.about-sm-btn[data-act]').forEach(function(btn) {
 			btn.addEventListener('click', function() {
@@ -150,16 +202,16 @@
 	}
 
 	var infoFields = [
-		['机型', 'model'],
-		['配置名称', 'config_name'],
-		['机型ID', 'machid'],
-		['内存大小', 'ram_size'],
-		['闪存类型', 'flash_type'],
-		['闪存信息', 'flash_chips'],
-		['PHY/交换机', 'phy_switch_info'],
-		['有线MAC', 'mac_addr'],
-		['无线MAC', 'wifi_mac'],
-		['U-Boot版本', 'version']
+		[uiText("机型"), 'model'],
+		[uiText("配置名称"), 'config_name'],
+		[uiText("机型ID"), 'machid'],
+		[uiText("内存大小"), 'ram_size'],
+		[uiText("闪存类型"), 'flash_type'],
+		[uiText("闪存信息"), 'flash_chips'],
+		[uiText("PHY/交换机"), 'phy_switch_info'],
+		[uiText("有线MAC"), 'mac_addr'],
+		[uiText("无线MAC"), 'wifi_mac'],
+		[uiText("U-Boot版本"), 'version']
 	];
 
 	function loadAbout() {
@@ -193,10 +245,10 @@
 				if (key === 'config_name' && data.config_name_source) {
 					td.className = 'about-gpio-ops';
 					if (data.config_name_source === 'env') {
-						addBtn(td, '恢复').onclick = function() { xhrPost('/env_set', 'config_name=', function() { loadAbout(); }); };
+						addBtn(td, uiText("恢复")).onclick = function() { xhrPost('/env_set', 'config_name=', function() { loadAbout(); }); };
 					} else if (data.config_name_source === 'fdt') {
-						addBtn(td, '修改').onclick = function() {
-							var v = prompt('输入 config_name 值 (如 config@xxx):');
+						addBtn(td, uiText("修改")).onclick = function() {
+							var v = prompt(uiText("输入 config_name 值 (如 config@xxx):"));
 							if (v !== null && v !== '')
 								xhrPost('/env_set', 'config_name=' + encodeURIComponent(v), function() { loadAbout(); });
 						};
@@ -213,20 +265,45 @@
 				    opsTd = document.createElement('td');
 				opsTd.className = 'about-gpio-ops';
 				if (isLed) {
-					addBtn(opsTd, '点亮', {'data-led':g.name, 'data-act':'on'});
-					addBtn(opsTd, '熄灭', {'data-led':g.name, 'data-act':'off'});
-					addBtn(opsTd, '闪烁', {'data-led':g.name, 'data-act':'blink'});
-					addBtn(opsTd, '停止', {'data-led':g.name, 'data-act':'stop'}, {display:'none'}, 'about-blink-stop');
+					addToggle(opsTd, g.name, !!g.value, function(on, done) {
+						stopBlink(g.name);
+						gpioRequest('/led?name=' + encodeURIComponent(g.name) + '&action=' + (on ? 'on' : 'off'), {}, opsTd, function() {
+							done(); tr.cells[4].textContent = on ? 1 : 0;
+							tr.cells[5].textContent = uiText(on ? '高' : '低');
+						});
+					});
+					addBtn(opsTd, uiText("闪烁"), {'data-led':g.name, 'data-act':'blink'});
+					addBtn(opsTd, uiText("停止"), {'data-led':g.name, 'data-act':'stop'}, {display:'none'}, 'about-blink-stop');
+				}
+				if (g.parent === 'modem_gpio' && g.gpio === 35) {
+					g.name = 'modem-power';
+					addToggle(opsTd, uiText('Power'), g.value === 0, function(on, done) {
+						modemAction(on ? 'power-on' : 'power-off', opsTd, function() {
+							done(); tr.cells[4].textContent = on ? 0 : 1;
+							tr.cells[5].textContent = uiText(on ? '低' : '高');
+						});
+					});
+					var boot = document.createElement('div'); boot.className = 'gpio-boot';
+					addToggle(boot, uiText('Startup action'), data.p5_modem_boot === true, function(on, done) {
+						modemAction(on ? 'boot-on' : 'boot-off', opsTd, done);
+					});
+					opsTd.appendChild(boot);
+				}
+				if (g.parent === 'modem_gpio' && g.gpio === 30) {
+					addToggle(opsTd, uiText('Startup action'), data.p5_modem_reset_boot === true, function(on, done) {
+						modemAction(on ? 'reset-boot-on' : 'reset-boot-off', opsTd, done);
+					}, 'Reset');
+					addBtn(opsTd, uiText('Reset modem')).onclick = function() { modemAction('reset', opsTd, function() { tr.cells[4].textContent = 0; tr.cells[5].textContent = uiText('低'); }); };
 				}
 				if (g.override) {
-					addBtn(opsTd, '恢复', {'data-override': g.override});
+					addBtn(opsTd, uiText("恢复"), {'data-override': g.override});
 				} else if (!isLed && g.parent === 'key_gpio') {
-					addBtn(opsTd, '修改', {'data-modify': 'reset_key'});
+					addBtn(opsTd, uiText("修改"), {'data-modify': 'reset_key'});
 				}
 				if (!opsTd.hasChildNodes()) opsTd.textContent = '-';
 				tr.innerHTML = [g.name||'-', g.alias||'', g.gpio, g.dir||'-',
-					g.value, g.value?'高':'低', g.parent||'-',
-					g.source==='env'?'变量':'fdt', g.override||''
+					g.value, g.value?uiText("高"):uiText("低"), g.parent||'-',
+					g.source==='env'?uiText("变量"):'fdt', g.override||''
 				].map(function(v){return '<td>'+v+'</td>';}).join('');
 				tr.appendChild(opsTd);
 				if (opsTd.hasChildNodes() && opsTd.textContent !== '-') {
@@ -246,7 +323,7 @@
 			gpioTbody.querySelectorAll('[data-modify]').forEach(function(btn) {
 				btn.onclick = function() {
 					var key = this.getAttribute('data-modify'),
-					    val = prompt('输入 ' + key + ' 的 GPIO 编号:');
+					    val = prompt(uiText('输入 {name} 的 GPIO 编号:', {name:key}));
 					if (val !== null && val !== '')
 						xhrPost('/env_set', encodeURIComponent(key) + '=' + encodeURIComponent(val), function() { loadAbout(); });
 				};
@@ -258,7 +335,7 @@
 				} else {
 					pollDetect();
 					detectTimer = setInterval(pollDetect, 200);
-					this.textContent = '停止探测';
+					this.textContent = uiText("停止探测");
 					this.classList.add('about-btn-pressed');
 				}
 			};
@@ -291,6 +368,7 @@
 
 	function loadMacTable(data) {
 		var macTbody = document.getElementById('mac-tbody');
+		document.getElementById('mac-source').textContent = uiText(data.mac_editable === false ? 'Read only. MAC source:' : 'MAC source:') + ' ' + (data.mac_source || '');
 		macTbody.innerHTML = '';
 		var entries = [];
 		var ethMacs = (data.mac_addr || '').split(', ');
@@ -303,7 +381,7 @@
 		for (var i = 0; i < ethMacs.length; i++)
 			if (ethMacs[i]) entries.push({iface: 'eth' + i, mac: ethMacs[i], off: ethOffs[i] || 'N/A', cso: 'N/A', cs: 'N/A', ok: 'N/A'});
 		for (var i = 0, j = 0; i < wifiMacs.length; i++)
-			if (wifiMacs[i] && wifiMacs[i] !== '-') entries.push({iface: 'wifi' + i, mac: wifiMacs[i], off: wifiOffs[j] || '-', cso: wifiCsOffs[j] || '-', cs: wifiCss[j] || '-', ok: wifiCsOks[j++] === '1' ? '✓' : '✗'});
+			if (wifiMacs[i] && wifiMacs[i] !== '-') entries.push({iface: uiText('Calibration entry') + ' ' + i, mac: wifiMacs[i], off: wifiOffs[j] || '-', cso: wifiCsOffs[j] || '-', cs: wifiCss[j] || '-', ok: wifiCsOks[j++] === '1' ? uiText('Pass') : uiText('Fail')});
 		entries.forEach(function(e) {
 			var tr = macTbody.insertRow();
 			['iface', 'mac', 'off', 'cso', 'cs', 'ok'].forEach(function(k) {
@@ -311,14 +389,15 @@
 			});
 			var tdO = tr.insertCell();
 			tdO.className = 'about-gpio-ops';
-			var btn = addBtn(tdO, '修改');
+			if (data.mac_editable === false) { tdO.textContent = uiText('仅供查看'); return; }
+			var btn = addBtn(tdO, uiText("修改"));
 			btn.setAttribute('data-iface', e.iface);
 			btn.onclick = function() {
-				var v = prompt('输入 ' + e.iface + ' 的新MAC地址 (格式: XX:XX:XX:XX:XX:XX):');
+				var v = prompt(uiText('输入 {name} 的新MAC地址 (格式: XX:XX:XX:XX:XX:XX):', {name:e.iface}));
 				if (!v) return;
-				if (!/^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/.test(v)) return alert('MAC地址格式无效');
+				if (!/^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/.test(v)) return alert(uiText("MAC地址格式无效"));
 				xhrPost('/mac_set', 'iface=' + encodeURIComponent(e.iface) + '&mac=' + encodeURIComponent(v.toUpperCase()), function(r) {
-					if (r !== 'ok') return alert('修改失败');
+					if (r !== 'ok') return alert(uiText("修改失败"));
 					xhrGet('/mac_info', function(d) {
 						loadMacTable(d);
 						var macTd = document.querySelector('[data-key="mac_addr"]');
@@ -352,7 +431,7 @@
 		});
 		var btn = document.getElementById('gpio-detect-btn');
 		if (btn) {
-			btn.textContent = '探测按键';
+			btn.textContent = uiText("探测按键");
 			btn.classList.remove('about-btn-pressed');
 		}
 	}
@@ -370,7 +449,7 @@
 					var cells = rows[r].querySelectorAll('td');
 					if (cells.length > 1 && cells[2].textContent == b.gpio) {
 						cells[4].textContent = b.value;
-						cells[5].textContent = b.value ? '高' : '低';
+						cells[5].textContent = b.value ? uiText("高") : uiText("低");
 						cells[5].className = b.value ? '' : 'about-btn-pressed';
 						if (changed) {
 							rows[r].classList.add('about-row-changed');
@@ -388,7 +467,7 @@
 						'<td>' + b.gpio + '</td>' +
 						'<td>in</td>' +
 						'<td>' + b.value + '</td>' +
-						'<td' + (b.value ? '' : ' class="about-btn-pressed"') + '>' + (b.value ? '高' : '低') + '</td>' +
+						'<td' + (b.value ? '' : ' class="about-btn-pressed"') + '>' + (b.value ? uiText("高") : uiText("低")) + '</td>' +
 						'<td>-</td><td>-</td><td></td><td>-</td>';
 					gpioTbody.appendChild(tr);
 					detectExtraRows[b.gpio] = tr;
@@ -396,7 +475,7 @@
 				if (!found && detectExtraRows[b.gpio]) {
 					var cells = detectExtraRows[b.gpio].querySelectorAll('td');
 					cells[4].textContent = b.value;
-					cells[5].textContent = b.value ? '高' : '低';
+					cells[5].textContent = b.value ? uiText("高") : uiText("低");
 					cells[5].className = b.value ? '' : 'about-btn-pressed';
 					if (changed) {
 						detectExtraRows[b.gpio].classList.add('about-row-changed');
@@ -407,94 +486,14 @@
 		});
 	}
 
-	function isBackupPartition(name) {
-		var u = (name || '').toUpperCase();
-		return u.indexOf('_1') === u.length - 2 || u.indexOf('BACKUP') !== -1 || u === 'BOOTCONFIG1';
-	}
 
-	function loadUpdsetTable() {
-		var tbody = document.getElementById('updset-tbody');
-		tbody.innerHTML = '';
+	var tabTitles = { info: uiText("设备信息"), gpio: uiText("GPIO信息"), smem: uiText("SMEM信息"), mac: uiText("MAC管理") };
 
-		// 第一行：更新备分区
-		var chk = document.createElement('input');
-		chk.type = 'checkbox';
-		chk.id = 'flash-backup-chk';
-		var lbl = document.createElement('label');
-		lbl.htmlFor = 'flash-backup-chk';
-		lbl.style.marginLeft = '0.5rem';
-		lbl.textContent = '检测中...';
-		var tdName = document.createElement('td');
-		tdName.textContent = '更新备分区';
-		var tdVal = document.createElement('td');
-		tdVal.className = 'about-gpio-ops';
-		tdVal.appendChild(chk);
-		tdVal.appendChild(lbl);
-		var tr = document.createElement('tr');
-		tr.appendChild(tdName);
-		tr.appendChild(tdVal);
-		tbody.appendChild(tr);
-		var applyState = function(en, tx) { chk.disabled = !en; lbl.textContent = tx; };
-		var setLs = function(v) { try { localStorage.setItem('flash_backup', v); } catch (e) {} };
-		var stateText = function() { return chk.checked ? '已启用·主备同刷' : '已关闭·仅主分区'; };
-		var storageOk = true;
-		try { chk.checked = localStorage.getItem('flash_backup') === '1'; }
-		catch (e) { storageOk = false; chk.checked = false; }
-		var done = false;
-		var timer = setTimeout(function() {
-			if (done) return;
-			done = true;
-			applyState(false, '检测失败');
-			chk.checked = false;
-			setLs('0');
-		}, 10000);
-		xhrGet('/partitions', function(data) {
-			if (done) return;
-			done = true;
-			clearTimeout(timer);
-			var hasBackup = (data && data.parts || []).some(function(p) { return isBackupPartition(p.name); });
-			var enabled = storageOk && hasBackup;
-			applyState(enabled, !storageOk ? '不可用' : !hasBackup ? '无备分区' : stateText());
-			if (!enabled) { chk.checked = false; if (storageOk && !hasBackup) setLs('0'); }
-		});
-		chk.onchange = function() {
-			try { localStorage.setItem('flash_backup', chk.checked ? '1' : '0'); applyState(true, stateText()); }
-			catch (e) { chk.checked = false; applyState(false, '不可用'); }
-		};
-
-		// 第二行：更新完成后自动重启
-		var chk2 = document.createElement('input');
-		chk2.type = 'checkbox';
-		chk2.id = 'auto-reboot-chk';
-		var lbl2 = document.createElement('label');
-		lbl2.htmlFor = 'auto-reboot-chk';
-		lbl2.style.marginLeft = '0.5rem';
-		var getRebootStateText = function() { return chk2.checked ? '已启用·自动重启' : '已关闭·手动重启'; };
-		try { chk2.checked = localStorage.getItem('auto_reboot') !== '0'; } catch (e) { chk2.checked = true; }
-		lbl2.textContent = getRebootStateText();
-		var tdName2 = document.createElement('td');
-		tdName2.textContent = '更新完成后自动重启';
-		var tdVal2 = document.createElement('td');
-		tdVal2.className = 'about-gpio-ops';
-		tdVal2.appendChild(chk2);
-		tdVal2.appendChild(lbl2);
-		var tr2 = document.createElement('tr');
-		tr2.appendChild(tdName2);
-		tr2.appendChild(tdVal2);
-		tbody.appendChild(tr2);
-		chk2.onchange = function() {
-			try { localStorage.setItem('auto_reboot', chk2.checked ? '1' : '0'); } catch (e) {}
-			lbl2.textContent = getRebootStateText();
-		};
-	}
-
-	// ===== 标签页切换逻辑 =====
-	var indicator = document.getElementById('tab-indicator');
-	var titleEl = document.getElementById('about-title');
-	var tabTitles = { info: '设备信息', gpio: 'GPIO信息', smem: 'SMEM信息', mac: 'MAC管理', updset: '更新设置' };
-
-	var macLoaded = false, smemLoaded = false, updsetLoaded = false;
+	var macLoaded = false, smemLoaded = false;
+	var titleEl = document.getElementById('about-title'), indicator = document.getElementById('tab-indicator');
 	function switchTab(tabName) {
+		if (!tabTitles[tabName]) tabName = 'info';
+		try { history.replaceState(null, '', '#' + tabName); } catch (e) {}
 		var tabs = document.querySelectorAll('.tab-item');
 		var contents = document.querySelectorAll('.tab-content');
 
@@ -506,8 +505,8 @@
 			content.classList.toggle('active', content.id === 'tab-' + tabName);
 		});
 
-		titleEl.textContent = tabTitles[tabName] || '关于设置';
-		document.title = tabTitles[tabName] || '关于设置';
+		titleEl.textContent = tabTitles[tabName] || uiText("关于设置");
+		document.title = tabTitles[tabName] || uiText("关于设置");
 
 		if (tabName === 'mac' && !macLoaded) {
 			macLoaded = true;
@@ -516,10 +515,6 @@
 		if (tabName === 'smem' && !smemLoaded) {
 			smemLoaded = true;
 			loadSmemTable();
-		}
-		if (tabName === 'updset' && !updsetLoaded) {
-			updsetLoaded = true;
-			loadUpdsetTable();
 		}
 
 		updateTabIndicator(indicator);
@@ -539,7 +534,7 @@
 	});
 
 	loadAbout();
-	titleEl.textContent = tabTitles.info;
+	switchTab(location.hash.slice(1) || 'info');
 	updateTabIndicator(indicator);
 	window.addEventListener('resize', function() { updateTabIndicator(indicator); });
 })();

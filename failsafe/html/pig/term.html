@@ -1,35 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+ <script>
+ (function(){
+  window.addEventListener('error',function(event){
+   var target=event.target;
+   if(!target || (target.tagName!=='SCRIPT' && !(target.tagName==='LINK' && target.rel==='stylesheet')))return;
+   function notice(){
+    if(!document.body || document.getElementById('resource-error'))return;
+    var box=document.createElement('div');box.id='resource-error';box.setAttribute('role','alert');
+    box.style.cssText='position:relative;padding:16px;margin:12px;background:#fff;color:#111;font:16px sans-serif;border:2px solid #b00020;z-index:9999';
+    box.textContent='Page resources did not load. Reload this page. ';
+    var button=document.createElement('button');button.textContent='Reload';button.onclick=function(){location.reload();};
+    box.appendChild(button);document.body.prepend(box);
+   }
+   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',notice,{once:true});else notice();
+  },true);
+ })();
+ </script>
+
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title data-i18n="终端变量">Terminal &amp; environment</title>
-	<script src="i18n.js?v=r5"></script>
-	<script src="common.js?v=f"></script>
-	<link rel="stylesheet" href="style.css?v=f">
+	<script src="i18n.js?v=r6"></script>
+	<script src="common.js?v=r4"></script>
+	<link rel="stylesheet" href="style.css?v=r6">
 </head>
 <body class="iframe-content">
 	<div class="card">
-		<h2><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-terminal"/></svg>终端变量</h2>
+		<h2><svg class="icon" viewBox="0 0 24 24"><use href="icons.svg?v=f#icon-terminal"/></svg><span data-i18n="终端变量">终端变量</span></h2>
 		<div class="terminal-container">
-			<a href="term.html" target="_blank" class="terminal-expand" id="expandBtn" title="独立窗口打开">⧉</a>
+			<a href="term.html" target="_blank" class="terminal-expand" id="expandBtn" title="独立窗口打开" data-i18n-title="独立窗口打开">⧉</a>
 			<div class="terminal-output-wrapper">
 				<div class="terminal-output" id="terminalOutput"></div>
 				<span class="terminal-status-bottom" id="connectionStatus">✗</span>
 			</div>
 			<div class="terminal-input-line">
 				<span class="terminal-prompt">></span>
-				<input type="text" class="terminal-input" id="terminalInput" placeholder="输入命令或变量名" autofocus>
-				<button class="terminal-btn" id="sendBtn" data-i18n="发送">发送</button>
-				<button class="terminal-btn" id="abortBtn" data-i18n="中断">中断</button>
-				<button class="terminal-btn terminal-clear" id="clearBtn" data-i18n="清屏">清屏</button>
-				<button class="terminal-btn active" id="rebootDev" data-i18n="重启">重启</button>
-				<button class="terminal-btn active" id="envToggle" data-i18n="折叠">折叠</button>
+				<input type="text" class="terminal-input" id="terminalInput" placeholder="输入命令或变量名" data-i18n-placeholder="输入命令或变量名" autofocus>
+				<button class="terminal-btn" id="sendBtn"><span data-i18n="发送">发送</span></button>
+				<button class="terminal-btn" id="abortBtn"><span data-i18n="中断">中断</span></button>
+				<button class="terminal-btn terminal-clear" id="clearBtn"><span data-i18n="清屏">清屏</span></button>
+				<button class="terminal-btn active" id="rebootDev"><span data-i18n="重启">重启</span></button>
+				<button class="terminal-btn active" id="envToggle"><span data-i18n="折叠">折叠</span></button>
 				<div class="terminal-dropdown-menu" id="envMenu">
-					<button class="terminal-btn active" id="queryEnv" data-i18n="查询">查询</button>
-					<button class="terminal-btn" id="updateEnv" data-i18n="修改">修改</button>
-					<button class="terminal-btn" id="deleteEnv" data-i18n="删除">删除</button>
-					<button class="terminal-btn active" id="resetEnv" data-i18n="重置">重置</button>
+					<button class="terminal-btn active" id="queryEnv"><span data-i18n="查询">查询</span></button>
+					<button class="terminal-btn" id="updateEnv"><span data-i18n="修改">修改</span></button>
+					<button class="terminal-btn" id="deleteEnv"><span data-i18n="删除">删除</span></button>
+					<button class="terminal-btn active" id="resetEnv"><span data-i18n="重置">重置</span></button>
 				</div>
 			</div>
 		</div>
@@ -53,12 +71,24 @@
 
 	var pollTimer = null;
 	var lastSeq = 0;
+	var stopped = false;
+	var pollController = new AbortController();
+	FETCH_OPTS.signal = pollController.signal;
+	window.addEventListener('pagehide', function() {
+		stopped = true; clearTimeout(pollTimer); pollController.abort();
+	});
+	window.addEventListener('pageshow', function(e) {
+		if (!e.persisted) return;
+		stopped = false; pollController = new AbortController();
+		FETCH_OPTS.signal = pollController.signal; restartPollFast();
+	});
 
 	function postCommand(body) {
 		return fetch(URL.CMD, { method: 'POST', headers: CMD_HEADERS, body: body });
 	}
 
 	function restartPoll(delay) {
+		if (stopped) return;
 		clearTimeout(pollTimer);
 		pollTimer = setTimeout(fetchStatus, delay);
 	}
@@ -77,6 +107,7 @@
 	}
 
 	async function fetchStatus() {
+		if (stopped) return;
 		var ok = false, hasNewData = false;
 		try {
 			var response = await fetch(URL.STATUS, FETCH_OPTS);
@@ -150,23 +181,24 @@
 	abortBtn.addEventListener('click', abortCommand);
 
 	document.getElementById('rebootDev').addEventListener('click', function () {
-		if (confirm('确认重启？')) { postCommand('reset'); }
+		if (confirm(uiText("确认重启？"))) { postCommand('reset'); }
 	});
 
 	var expandBtn = document.getElementById('expandBtn');
 	var isFrame = window.self !== window.top;
 	expandBtn.href = isFrame ? 'term.html' : 'index.html';
 	expandBtn.target = isFrame ? '_blank' : '';
-	expandBtn.title = isFrame ? '大窗' : '返回';
+	expandBtn.removeAttribute('data-i18n-title');
+	expandBtn.title = isFrame ? uiText("大窗") : uiText("返回");
 
 	var envMenu = document.getElementById('envMenu');
 	envMenu.classList.add('show');
 
 	var envToggle = document.getElementById('envToggle');
-	envToggle.textContent = '折叠';
+	envToggle.textContent = uiText("折叠");
 
 	envToggle.addEventListener('click', function () {
-		envToggle.textContent = envMenu.classList.toggle('show') ? '折叠' : '展开';
+		envToggle.textContent = envMenu.classList.toggle('show') ? uiText("折叠") : uiText("展开");
 	});
 
 	document.getElementById('queryEnv').addEventListener('click', function () {
@@ -176,20 +208,20 @@
 
 	document.getElementById('updateEnv').addEventListener('click', function () {
 		var n = getInput();
-		if (!n) { alert('输入变量名'); return; }
-		var v = prompt('修改 ' + n + ' 的值:');
+		if (!n) { alert(uiText("输入变量名")); return; }
+		var v = prompt(uiText('修改 {name} 的值:', {name:n}));
 		if (v !== null) { postAndPoll('setenv ' + n + ' ' + v + '; saveenv'); }
 	});
 
 	document.getElementById('deleteEnv').addEventListener('click', function () {
 		var n = getInput();
-		if (!n) { alert('输入变量名'); return; }
-		if (confirm('确认删除 ' + n + '？')) { postAndPoll('setenv ' + n + '; saveenv'); }
+		if (!n) { alert(uiText("输入变量名")); return; }
+		if (confirm(uiText('确认删除 {name}？', {name:n}))) { postAndPoll('setenv ' + n + '; saveenv'); }
 	});
 
 	document.getElementById('resetEnv').addEventListener('click', function () {
 		var n = getInput();
-		var msg = n ? '将 ' + n + ' 重置为缺省值？' : '重置全部为缺省值？';
+		var msg = n ? uiText('将 {name} 重置为缺省值？', {name:n}) : uiText("重置全部为缺省值？");
 		var cmd = n ? 'env default -f ' + n + '; saveenv' : 'env default -a; saveenv';
 		if (confirm(msg)) { postAndPoll(cmd); }
 	});

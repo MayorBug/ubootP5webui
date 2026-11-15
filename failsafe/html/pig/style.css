@@ -818,3 +818,127 @@ body.iframe-content:has(.terminal-container)::-webkit-scrollbar,
 .terminal-output::-webkit-scrollbar-thumb {
 	background: var(--c-term-scroll-thumb)
 }
+/* Match the existing sidebar controls without changing the page layout. */
+.language-switch { margin-top: 1rem; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.language-switch select { width: auto; max-width: 100%; padding: .4rem .6rem; font: inherit; }
+.language-switch select:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
+
+.ram-test-notice { color: var(--c-text); margin-bottom: .5rem; }
+
+.additional-links { flex-direction: column; align-items: center; padding: 0 1rem; text-align: center; }
+.language-switch { justify-content: center; }
+.language-switch select { background: var(--c-card-bg); color: var(--c-text); border: 1px solid var(--c-border); }
+@media (max-width: 1120px) {
+	.main-container { width: calc(100% - 2rem); }
+	.content-frame-wrapper { min-width: 0; }
+}
+@media (max-width: 700px) {
+	body:not(.iframe-content) { justify-content: flex-start; }
+	.main-container { flex-direction: column; height: auto; padding: .75rem; margin: .75rem auto; }
+	.sidebar-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: .25rem; }
+	.sidebar-nav-item a { white-space: normal; padding: .5rem; font-size: .875rem; }
+	.language-switch { margin-top: .5rem; }
+	.content-frame-wrapper { margin: .75rem 0 0; flex: none; height: 70vh; min-height: 400px; }
+	body.iframe-content .card { width: calc(100% - 1rem); padding: .75rem; }
+	.card h2 { font-size: 1.5rem; }
+	.about-section { overflow-x: auto; }
+	.tab-item { padding: .4rem .75rem; font-size: .875rem; }
+}
+
+/* Keep text readable on the existing blue action buttons in either theme. */
+button, .about-sm-btn { color: #102030; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 3px; }
+
+.recovery-actions { display: flex; flex-direction: column; gap: .4rem; margin: 1rem 0; }
+.recovery-actions a { padding: .5rem .75rem; border-bottom: 1px solid var(--c-border); color: var(--c-link); }
+.recovery-panel { margin: 1rem 0; }
+.recovery-panel[hidden] { display: none; }
+.recovery-panel label { display: block; margin-top: .75rem; }
+.recovery-panel button { margin-top: 1rem; }
+.plan-output { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8rem; line-height: 1.6; margin: .75rem 0; }
+.recovery-card h3, .recovery-card h4 { margin: 1rem 0 .5rem; }
+body.iframe-content:has(.recovery-card) { justify-content: flex-start; }
+.recovery-card button:disabled { opacity: .55; cursor: not-allowed; }
+
+button:disabled { opacity: .5; cursor: not-allowed; }
+
+.backup-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.backup-actions button { white-space: normal; }
+
+/* Keep tabs on one scrollable row. Keep MAC actions inside table cells. */
+.tab-nav { flex-wrap: nowrap; overflow-x: auto; }
+#tab-mac .about-section { overflow-x: auto; }
+#mac-table th, #mac-table td {
+	display: table-cell;
+	white-space: nowrap;
+	height: auto;
+	line-height: 1.4;
+	padding: .55rem .65rem;
+}
+#mac-table thead th { position: static; }
+
+/* Recovery tools: compact forms, grouped actions and comparable layouts. */
+body.iframe-content:has(.backup-card) { justify-content: flex-start; }
+.recovery-card, .backup-card { text-align: left; padding: 2rem; }
+.recovery-card h2, .backup-card h2 { text-align: left; font-size: 1.75rem; margin: 0 0 1.5rem; padding-bottom: 1rem; }
+.recovery-card h3 { font-size: 1.05rem; margin: 1.5rem 0 .5rem; }
+.recovery-card p, .backup-card p { text-align: left; font-size: .9rem; line-height: 1.5; margin: .75rem 0; }
+.recovery-panel { margin: 0; }
+.recovery-panel label, .backup-col label, .backup-col .label { font-size: .875rem; font-weight: 600; margin: 1rem 0 .4rem; }
+.recovery-panel input[type=file], .recovery-panel select { display: block; width: 100%; box-sizing: border-box; padding: .65rem; font: inherit; color: var(--c-text); background: var(--c-card-bg); border: 1px solid var(--c-border); border-radius: 4px; }
+.recovery-panel input::file-selector-button { padding: .35rem .6rem; margin-right: .75rem; }
+.recovery-panel input[type=checkbox] { margin: 0 .4rem 0 0; accent-color: var(--c-primary); }
+.action-row, .backup-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1rem 0; justify-content: flex-start; }
+.recovery-card button, .backup-card button { width: auto; margin: 0; padding: .65rem 1rem; font-size: .875rem; line-height: 1.4; }
+.recovery-panel > button { margin-top: 1rem; }
+.recovery-card #install { border-top: 0; }
+.recovery-card #install h3:not(:first-child) { border-top: 1px solid var(--c-border); padding-top: 1.5rem; margin-top: 2rem; }
+.recovery-card .plan-output:empty { display: none; }
+.recovery-card .plan-output { padding: .75rem 0; text-align: left; }
+.layout-comparison { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1.5rem; margin-top: 1.5rem; }
+.layout-comparison h3 { margin-top: 0; }
+.partition-table { width: 100%; border-collapse: collapse; font-size: .875rem; font-variant-numeric: tabular-nums; }
+.partition-table td { padding: .65rem 0; border-bottom: 1px solid var(--c-border); vertical-align: top; }
+.partition-table td:last-child { text-align: right; }
+.partition-table strong { display: block; font-weight: 600; }
+.partition-table small { display: block; font-size: .75rem; margin-top: .25rem; overflow-wrap: anywhere; }
+.recovery-card details { margin-top: 1rem; }
+.recovery-card summary { cursor: pointer; padding: .6rem 0; color: var(--c-primary); }
+.backup-card .backup-row { margin: 0; gap: 1rem; }
+.backup-card .size-display { height: auto; min-height: 2.2rem; overflow-wrap: anywhere; }
+.backup-card .tips { margin-top: 1.5rem; padding: 0; border: 0; text-align: left; }
+.backup-card .tips ul { padding: 0; margin: 0; }
+.backup-card #backup-progress { font-size: .875rem; line-height: 1.6; }
+@media(max-width:600px) {
+ .layout-comparison { gap: .75rem; }
+ .partition-table td { display: table-cell; font-size: .8rem; }
+ .partition-table small { font-size: .7rem; }
+ .backup-card .backup-row { flex-direction: column; }
+ .action-row button, .backup-actions button { flex: 1 1 auto; }
+}
+
+.backup-card .tips:not(:has(#backup-progress:not([style*="display:none"]))) { display: none; }
+
+/* Reuse the Board information tabs for U-Boot test and flash tasks. */
+.recovery-card .tab-nav { margin: 0 0 1.25rem; border-bottom: 1px solid var(--c-border); }
+.recovery-card .tab-item { background: transparent; color: var(--c-text-light); border: 0; border-radius: 0; padding: .5rem 1.5rem; margin: 0; font-size: 1rem; }
+.recovery-card .tab-item.active { background: rgba(93,173,226,.1); color: var(--c-primary); border-top: 3px solid var(--c-primary); font-weight: 700; }
+.recovery-card .tab-item:hover { color: var(--c-primary); background: rgba(93,173,226,.1); }
+.recovery-card [role=tabpanel][hidden] { display: none; }
+.recovery-card [role=tabpanel] > button { margin-top: 1rem; }
+
+/* Compact GPIO switches retain native keyboard and screen-reader behavior. */
+.gpio-toggle { display:inline-flex; align-items:center; gap:.4rem; position:relative; cursor:pointer; white-space:nowrap; color:var(--c-text); min-height:2rem; }
+.gpio-toggle input { position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; }
+.gpio-toggle-track { width:2rem; height:1.1rem; background:var(--c-text-light); border-radius:1rem; flex-shrink:0; }
+.gpio-toggle-track::after { content:''; display:block; width:.8rem; height:.8rem; margin:.15rem; background:var(--c-card-bg); border-radius:50%; }
+.gpio-toggle input:checked + .gpio-toggle-track { background:var(--c-primary); }
+.gpio-toggle input:checked + .gpio-toggle-track::after { transform:translateX(.9rem); }
+.gpio-toggle input:focus-visible + .gpio-toggle-track { outline:2px solid var(--c-primary); outline-offset:3px; }
+.gpio-toggle:has(input:disabled) { opacity:.6; cursor:wait; }
+.gpio-boot { display:flex; flex-direction:column; align-items:flex-start; line-height:1.3; padding:0; }
+.gpio-boot small { max-width:18rem; white-space:normal; }
+#gpio-error { color:var(--c-text); border:1px solid var(--c-border); padding:.5rem; }
+
+#gpio-table td.about-gpio-ops { height:auto; min-height:2rem; padding:.3rem .5rem; gap:.5rem; justify-content:flex-start; align-items:flex-start; flex-direction:column; }
+#gpio-table tbody tr.gpio-btn-row { position:static; }

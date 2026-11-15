@@ -1,16 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+ <script>
+ (function(){
+  window.addEventListener('error',function(event){
+   var target=event.target;
+   if(!target || (target.tagName!=='SCRIPT' && !(target.tagName==='LINK' && target.rel==='stylesheet')))return;
+   function notice(){
+    if(!document.body || document.getElementById('resource-error'))return;
+    var box=document.createElement('div');box.id='resource-error';box.setAttribute('role','alert');
+    box.style.cssText='position:relative;padding:16px;margin:12px;background:#fff;color:#111;font:16px sans-serif;border:2px solid #b00020;z-index:9999';
+    box.textContent='Page resources did not load. Reload this page. ';
+    var button=document.createElement('button');button.textContent='Reload';button.onclick=function(){location.reload();};
+    box.appendChild(button);document.body.prepend(box);
+   }
+   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',notice,{once:true});else notice();
+  },true);
+ })();
+ </script>
+
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title data-i18n="404 - 未找到页面">404 - Page not found</title>
-	<link rel="stylesheet" href="style.css?v=f">
+	<link rel="stylesheet" href="style.css?v=r6">
+	<script src="i18n.js?v=r6"></script>
 </head>
 <body class="iframe-content">
 	<div class="card">
 		<h2>404</h2>
-		<p>出错了，访问的页面不存在。</p>
-		<a href="index.html" target="_top" data-i18n="返回首页">返回首页</a>
+		<p data-i18n="出错了，访问的页面不存在。">出错了，访问的页面不存在。</p>
+		<a href="index.html" target="_top"><span data-i18n="返回首页">返回首页</span></a>
 	</div>
 </body>
 </html>

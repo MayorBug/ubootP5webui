@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <script>
+ (function(){
+  window.addEventListener('error',function(event){
+   var target=event.target;
+   if(!target || (target.tagName!=='SCRIPT' && !(target.tagName==='LINK' && target.rel==='stylesheet')))return;
+   function notice(){
+    if(!document.body || document.getElementById('resource-error'))return;
+    var box=document.createElement('div');box.id='resource-error';box.setAttribute('role','alert');
+    box.style.cssText='position:relative;padding:16px;margin:12px;background:#fff;color:#111;font:16px sans-serif;border:2px solid #b00020;z-index:9999';
+    box.textContent='Page resources did not load. Reload this page. ';
+    var button=document.createElement('button');button.textContent='Reload';button.onclick=function(){location.reload();};
+    box.appendChild(button);document.body.prepend(box);
+   }
+   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',notice,{once:true});else notice();
+  },true);
+ })();
+ </script>
+
+ <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+ <title>P5 recovery</title>
+ <script>if (/^#(boot|layout|restore|install)$/.test(location.hash)) document.documentElement.classList.add('recovery-tool');</script>
+ <style>.recovery-tool #recovery-home { display: none; }</style>
+ <script src="i18n.js?v=r6"></script><script src="common.js?v=r4"></script>
+ <script src="sha256.js?v=r4"></script><script src="recovery.js?v=r4"></script>
+ <link rel="stylesheet" href="style.css?v=r6">
+</head>
+<body class="iframe-content">
+ <main class="card recovery-card">
+  <h2 id="recovery-title">P5 recovery</h2>
+  <p id="recovery-error" role="alert" hidden></p>
+  <div id="recovery-home">
+  <p id="recovery-status" role="status" data-i18n="Reading board metadata…">Reading board metadata…</p>
+
+  </div>
+  <section id="home" class="recovery-panel"><button id="boot-installed" type="button" disabled data-i18n="Boot installed firmware">Boot installed firmware</button><pre id="installed-result" class="plan-output" role="status"></pre></section>
+  <section id="boot" class="recovery-panel" hidden>
+   <div class="tab-nav" role="tablist" aria-label="OpenWrt">
+    <button id="openwrt-boot-tab" class="tab-item active" role="tab" aria-selected="true" aria-controls="openwrt-boot-panel" type="button">Initramfs</button>
+    <button id="openwrt-flash-tab" class="tab-item" role="tab" aria-selected="false" aria-controls="openwrt-flash-panel" tabindex="-1" type="button">Factory UBI</button>
+   </div>
+   <div id="openwrt-boot-panel" role="tabpanel" aria-labelledby="openwrt-boot-tab">
+   <p data-i18n="Upload an initramfs image to start OpenWrt from RAM.">Upload an initramfs image to start OpenWrt from RAM.</p>
+   <label for="boot-upload-file" data-i18n="Initramfs image">Initramfs image</label><input id="boot-upload-file" type="file">
+   <button id="boot-upload" type="button" disabled data-i18n="Upload and boot initramfs">Upload and boot initramfs</button>
+   <pre id="boot-upload-result" class="plan-output" role="status"></pre>
+   </div>
+   <div id="openwrt-flash-panel" role="tabpanel" aria-labelledby="openwrt-flash-tab" hidden>
+   <p data-i18n="Install a P5 factory UBI image for the current flash layout. This replaces firmware and settings.">Install a P5 factory UBI image for the current flash layout. This replaces firmware and settings.</p>
+   <p data-i18n="Maximum upload: 32 MiB. Requires a P5 FIT and UBI volumes kernel, rootfs, and empty autoresizing rootfs_data.">Maximum upload: 32 MiB. Requires a P5 FIT and UBI volumes kernel, rootfs, and empty autoresizing rootfs_data.</p>
+   <p data-i18n="Single-layout flashing was hardware-tested. Dual-layout flashing was tested only in simulation.">Single-layout flashing was hardware-tested. Dual-layout flashing was tested only in simulation.</p>
+   <label for="factory-file" data-i18n="Factory UBI image">Factory UBI image</label><input id="factory-file" type="file" accept=".ubi">
+   <button id="factory-flash" type="button" disabled data-i18n="Flash factory UBI">Flash factory UBI</button>
+   <pre id="factory-result" class="plan-output" role="status"></pre>
+   </div>
+  </section>
+  <section id="layout" class="recovery-panel" hidden>
+   <label for="layout-target" data-i18n="Target layout">Target layout</label>
+   <select id="layout-target"><option value="single" data-i18n="Single rootfs (72 MiB)">Single rootfs (72 MiB)</option><option value="dual" data-i18n="Original dual rootfs">Original dual rootfs</option></select>
+   <div class="action-row">
+   <button id="layout-check" type="button" data-i18n="Check conversion">Check conversion</button><button id="layout-apply" type="button" disabled data-i18n="Apply layout">Apply layout</button>
+   </div>
+
+   <p data-i18n="Single rootfs combines both 36 MiB slots into one 72 MiB region.">Single rootfs combines both 36 MiB slots into one 72 MiB region.</p>
+   <p data-i18n="Before conversion, back up 0:MIBIB, 0:BOOTCONFIG, and 0:BOOTCONFIG1.">Before conversion, back up 0:MIBIB, 0:BOOTCONFIG, and 0:BOOTCONFIG1.</p>
+   <p data-i18n="After conversion, restart and install firmware for the selected layout.">After conversion, restart and install firmware for the selected layout.</p>
+   <div id="layout-result" role="status"></div>
+  </section>
+  <section id="restore" class="recovery-panel" hidden>
+   <p data-i18n="Select a complete ECC partition backup and its device-bound manifest.">Select a complete ECC partition backup and its device-bound manifest.</p>
+   <label for="restore-manifest" data-i18n="Backup manifest (.json)">Backup manifest (.json)</label><input id="restore-manifest" type="file" accept=".json">
+   <label for="restore-file" data-i18n="Partition backup">Partition backup</label><input id="restore-file" type="file">
+   <label><input id="restore-full" type="checkbox"> <span data-i18n="Allow full restoration (includes U-Boot)">Allow full restoration (includes U-Boot)</span></label>
+   <p data-i18n="Leave unchecked to keep both U-Boot copies.">Leave unchecked to keep both U-Boot copies.</p>
+   <div class="action-row">
+   <button id="restore-check" type="button" data-i18n="Check restore">Check restore</button><button id="restore-apply" type="button" disabled data-i18n="Restore partition">Restore partition</button>
+   </div>
+   <pre id="restore-result" class="plan-output" role="status"></pre>
+  </section>
+  <section id="install" class="recovery-panel" hidden>
+   <div class="tab-nav" role="tablist" aria-label="U-Boot">
+    <button id="uboot-test-tab" class="tab-item active" role="tab" aria-selected="true" aria-controls="uboot-test-panel" type="button" data-i18n="Test">Test</button>
+    <button id="uboot-flash-tab" class="tab-item" role="tab" aria-selected="false" aria-controls="uboot-flash-panel" tabindex="-1" type="button" data-i18n="Flash">Flash</button>
+   </div>
+   <div id="uboot-test-panel" role="tabpanel" aria-labelledby="uboot-test-tab">
+   <p data-i18n="Upload a P5 RAM-test ELF to try U-Boot without installing it.">Upload a P5 RAM-test ELF to try U-Boot without installing it.</p>
+   <label for="uboot-ram-file" data-i18n="P5 RAM-test ELF">P5 RAM-test ELF</label><input id="uboot-ram-file" type="file" accept=".elf">
+   <button id="uboot-ram-boot" type="button" disabled data-i18n="Upload and RAM boot U-Boot">Upload and RAM boot U-Boot</button>
+   <pre id="uboot-ram-result" class="plan-output" role="status"></pre>
+   </div>
+   <div id="uboot-flash-panel" role="tabpanel" aria-labelledby="uboot-flash-tab" hidden>
+
+   <p data-i18n="Use the P5 .mbn package for the custom recovery RAM test or permanent installation.">Use the P5 .mbn package for the custom recovery RAM test or permanent installation.</p>
+   <label for="install-file" data-i18n="Bootloader package">Bootloader package</label><input id="install-file" type="file" accept=".mbn">
+   <div class="action-row">
+   <button id="install-upload-check" type="button" disabled data-i18n="Check image">Check image</button>
+   <button id="flash-ram-boot" type="button" disabled data-i18n="Test from RAM">Test from RAM</button>
+   <button id="install-apply" type="button" disabled data-i18n="Install U-Boot">Install U-Boot</button>
+   </div>
+   <pre id="install-result" class="plan-output" role="status"></pre>
+   </div>
+  </section>
+
+ </main>
+ <script src="recoveryui.js?v=r6"></script>
+</body></html>

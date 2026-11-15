@@ -1,24 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+ <script>
+ (function(){
+  window.addEventListener('error',function(event){
+   var target=event.target;
+   if(!target || (target.tagName!=='SCRIPT' && !(target.tagName==='LINK' && target.rel==='stylesheet')))return;
+   function notice(){
+    if(!document.body || document.getElementById('resource-error'))return;
+    var box=document.createElement('div');box.id='resource-error';box.setAttribute('role','alert');
+    box.style.cssText='position:relative;padding:16px;margin:12px;background:#fff;color:#111;font:16px sans-serif;border:2px solid #b00020;z-index:9999';
+    box.textContent='Page resources did not load. Reload this page. ';
+    var button=document.createElement('button');button.textContent='Reload';button.onclick=function(){location.reload();};
+    box.appendChild(button);document.body.prepend(box);
+   }
+   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',notice,{once:true});else notice();
+  },true);
+ })();
+ </script>
+
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title data-i18n=""></title>
-	<script src="i18n.js?v=r5"></script>
-	<script src="common.js?v=f"></script>
-	<link rel="stylesheet" href="style.css?v=f">
+	<title>Update firmware</title>
+	<script src="i18n.js?v=r6"></script>
+	<script src="common.js?v=r4"></script>
+	<link rel="stylesheet" href="style.css?v=r6">
 </head>
 <body class="iframe-content">
 	<div class="card">
-		<h2 class="has-tabs"><svg class="icon" viewBox="0 0 24 24"><use id="update-icon" href="icons.svg?v=f#icon-upload"/></svg><span id="update-title" data-i18n="更新固件">更新固件</span><span class="tab-indicator" id="tab-indicator"></span></h2>
+		<h2 class="has-tabs"><svg class="icon" viewBox="0 0 24 24"><use id="update-icon" href="icons.svg?v=f#icon-upload"/></svg><span id="update-title"><span data-i18n="更新固件">更新固件</span></span><span class="tab-indicator" id="tab-indicator"></span></h2>
 
 		<div class="tab-nav">
-			<div class="tab-item active" data-tab="firmware">固件</div>
+			<div class="tab-item active" data-tab="firmware"><span data-i18n="固件">固件</span></div>
 			<div class="tab-item" data-tab="uboot">U-BOOT</div>
 			<div class="tab-item" data-tab="art">ART</div>
 			<div class="tab-item" data-tab="cdt">CDT</div>
-			<div class="tab-item" data-tab="ptable">分区表</div>
-			<div class="tab-item" data-tab="initramfs">内存启动</div>
+			<div class="tab-item" data-tab="ptable"><span data-i18n="分区表">分区表</span></div>
+			<div class="tab-item" data-tab="initramfs"><span data-i18n="内存启动">内存启动</span></div>
 		</div>
 
 		<p id="update-desc"></p>
@@ -27,77 +45,78 @@
 			<input type="hidden" name="auto_reboot" id="auto-reboot-input" value="1">
 			<div class="form-group">
 				<label for="update-file" id="update-label"></label>
-				<input type="file" id="update-file" aria-label="选择文件" required>
+				<input type="file" id="update-file" aria-label="选择文件" data-i18n-aria-label="选择文件" required>
 			</div>
-			<div class="button-container"><button type="submit" id="update-btn" data-i18n="确认">确认</button></div>
+			<div class="button-container"><button type="submit" id="update-btn"><span data-i18n="确认">确认</span></button></div>
 		</form>
 		<div class="tips" id="update-tips">
 			<ul id="update-tips-list"></ul>
 		</div>
 	</div>
-	<script src="submit.js?v=f"></script>
+	<script src="sha256.js?v=r4"></script>
+	<script src="submit.js?v=r4"></script>
 	<script>
 	(function() {
-		var commonTips = ['更新过程中不能断开设备的电源；', 'REBOOT_TIP'];
+		var commonTips = [uiText("更新过程中不能断开设备的电源；"), 'REBOOT_TIP'];
 		var commonAccept = '.bin,.BIN,.img,.IMG';
 		var tabData = {
 			firmware: {
-				name: '固件', icon: 'icon-upload',
+				name: uiLanguage === 'en' ? 'firmware' : uiText("固件"), icon: 'icon-upload',
 				accept: '.ubi,.UBI,.trx,.TRX'
 			},
 			uboot: {
 				name: 'U-BOOT', icon: 'icon-hard-drive',
 				accept: '.elf,.ELF,.mbn,.MBN',
 				danger: true,
-				tips: ['请确认所选的U-BOOT文件是正确的；', '更新U-BOOT<span style="color:red">非常危险</span>，可能会损坏设备；', 'REBOOT_TIP']
+				tips: [uiText("请确认所选的U-BOOT文件是正确的；"), uiText("更新U-BOOT<span style=\"color:red\">非常危险</span>，可能会损坏设备；"), 'REBOOT_TIP']
 			},
 			art: {
 				name: 'ART', icon: 'icon-wifi',
-				note: '(Atheros无线芯片的频率校正数据)',
+				note: uiText("(Atheros无线芯片的频率校正数据)"),
 				accept: '.art,.ART,art.*,ART.*'
 			},
 			cdt: {
 				name: 'CDT', icon: 'icon-sliders',
-				note: '(Configuration Data Table, 配置数据表)',
+				note: uiText("(Configuration Data Table, 配置数据表)"),
 				accept: '.cdt,.CDT,cdt.*,CDT.*',
 				danger: true,
-				tips: ['请确认所选的CDT文件是正确的；', '更新CDT<span style="color:red">非常危险</span>，可能会损坏设备；', 'REBOOT_TIP']
+				tips: [uiText("请确认所选的CDT文件是正确的；"), uiText("更新CDT<span style=\"color:red\">非常危险</span>，可能会损坏设备；"), 'REBOOT_TIP']
 			},
 			ptable: {
 				name: 'GPT/MIBIB', icon: 'icon-storage',
-				desc: '将更新此设备的<b>PARTITION TABLE</b>(GPT/MIBIB)。<br>EMMC选<b>GPT</b>，NOR/NAND选<b>MIBIB</b>，请选择要更新的<b>分区表文件</b>并点击<b>确认</b>按钮。',
-				label: '请选择<b>GPT/MIBIB文件</b>',
+				desc: uiText("将更新此设备的<b>PARTITION TABLE</b>(GPT/MIBIB)。<br>EMMC选<b>GPT</b>，NOR/NAND选<b>MIBIB</b>，请选择要更新的<b>分区表文件</b>并点击<b>确认</b>按钮。"),
+				label: uiText("请选择<b>GPT/MIBIB文件</b>"),
 				accept: '.gpt,.GPT,.mibib,.MIBIB',
 				danger: true,
 				tips: [
-					'请确认所选的分区表文件是正确的；',
-					'更新分区表<span style="color:red">非常危险</span>，可能会损坏设备；',
+					uiText("请确认所选的分区表文件是正确的；"),
+					uiText("更新分区表<span style=\"color:red\">非常危险</span>，可能会损坏设备；"),
 					'REBOOT_TIP'
 				]
 			},
 			initramfs: {
 				name: 'INITRAMFS', icon: 'icon-rocket',
-				title: '内存启动',
-				desc: '将从内存中运行<b>INITRAMFS系统</b>。<br>选择适合本设备启动的<b>initramfs文件</b>并点击<b>确认</b>按钮。',
-				label: '请选择<b>INITRAMFS文件</b>',
+				title: uiText("内存启动"),
+				desc: uiText("将从内存中运行<b>INITRAMFS系统</b>。<br>选择适合本设备启动的<b>initramfs文件</b>并点击<b>确认</b>按钮。"),
+				label: uiText("请选择<b>INITRAMFS文件</b>"),
 				fullAccept: '.itb,.uImage,.zImage',
 				tips: [
-					'请确认所选的initramfs文件是正确的；',
-					'运行内存系统不影响闪存中的数据；',
-					'可以断开电源终止启动。'
+					uiText("请确认所选的initramfs文件是正确的；"),
+					uiText("运行内存系统不影响闪存中的数据；"),
+					uiText("可以断开电源终止启动。")
 				]
 			}
 		};
 
 		function buildDesc(d) {
-			return d.desc || ('将更新此设备的<b>' + d.name + '</b>' + (d.note || '') + '。<br>请选择要更新的<b>' + d.name + '文件</b>并点击<b>确认</b>按钮。');
+			return d.desc || uiText('将更新此设备的<b>{name}</b>{note}。<br>请选择要更新的<b>{name}文件</b>并点击<b>确认</b>按钮。', {name:d.name, note:d.note || ''});
 		}
 
 		function buildTips(d) {
-			var tips = d.tips ? d.tips.slice() : ['请确认所选的' + d.name + '文件是正确的；'].concat(commonTips);
+			var tips = d.tips ? d.tips.slice() : [uiText('请确认所选的{name}文件是正确的；', {name:d.name})].concat(commonTips);
 			var autoReboot = true;
 			try { autoReboot = localStorage.getItem('auto_reboot') !== '0'; } catch (e) {}
-			var rebootTip = autoReboot ? '更新完成后将自动重启。' : '按需自动或手动重启。';
+			var rebootTip = autoReboot ? uiText("更新完成后将自动重启。") : uiText("按需自动或手动重启。");
 			for (var i = 0; i < tips.length; i++) {
 				if (tips[i] === 'REBOOT_TIP') {
 					tips[i] = rebootTip;
@@ -124,13 +143,14 @@
 
 		function switchTab(tabName) {
 			var d = tabData[tabName];
+			try { history.replaceState(null, '', '#' + tabName); } catch (e) {}
 			if (!d) return;
 
 			document.querySelectorAll('.tab-item').forEach(function(tab) {
 				tab.classList.toggle('active', tab.getAttribute('data-tab') === tabName);
 			});
 
-			var title = d.title || ('更新' + d.name);
+			var title = d.title || uiText('更新{name}', {name:d.name});
 			el.title.textContent = title;
 			document.title = title;
 			window.bkType = d.name;
@@ -140,7 +160,7 @@
 			el.file.name = tabName;
 			el.file.accept = buildAccept(d);
 			el.file.value = '';
-			el.label.innerHTML = d.label || ('请选择<b>' + d.name + '文件</b>');
+			el.label.innerHTML = d.label || uiText('请选择<b>{name}文件</b>', {name:d.name});
 			el.tipsList.innerHTML = '<li class="file-tip">' + buildTips(d).join('</li><li class="file-tip">') + '</li><li id="sha256-display" style="display:none;list-style:none"></li>';
 			el.tips.classList.toggle('tips-danger', !!d.danger);
 
